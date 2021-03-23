@@ -3,7 +3,7 @@ package logger
 import (
 	"bytes"
 	"context"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 	"sync"
 )
