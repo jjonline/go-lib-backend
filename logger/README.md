@@ -36,6 +36,6 @@ log.Zap.Info(
 
 ## 版本说明
 
-`logger/v1.x.x` 适配[go-redis ](https://github.com/go-redis/redis) v7
+`logger/v1.1.x` 适配[go-redis ](https://github.com/go-redis/redis) v7
 
-`logger/v2.x.x` 适配[go-redis ](https://github.com/go-redis/redis) v8
+`logger/v1.2.x` 适配[go-redis ](https://github.com/go-redis/redis) v8
