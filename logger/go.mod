@@ -1,8 +1,8 @@
-module github.com/jjonline/go-mod-library/logger/v7
+module github.com/jjonline/go-mod-library/logger
 
 go 1.16
 
 require (
-	github.com/go-redis/redis/v8 v8.8.0
+	github.com/go-redis/redis/v7 v7.4.0
 	go.uber.org/zap v1.16.0
 )
