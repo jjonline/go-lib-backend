@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/go-redis/redis/v7 v7.4.0
-	github.com/jjonline/go-mod-library/queue v1.2.3
+	github.com/jjonline/go-mod-library/queue v0.8.0
 	go.uber.org/zap v1.16.0
 )
 

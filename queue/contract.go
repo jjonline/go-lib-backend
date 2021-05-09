@@ -139,6 +139,7 @@ type FailedJobHandler func(payload *Payload, err error) error
 type TaskIFace interface {
 	MaxTries() int64                                 // 定义队列任务最大尝试次数：任务执行的最大尝试次数
 	RetryInterval() int64                            // 定义队列任务最大尝试间隔：当任务执行失败后再次尝试执行的间隔时长，单位：秒
+	Timeout() time.Duration                          // 定义队列超时方法：返回超时时长
 	Name() string                                    // 定义队列名称方法：返回队列名称
 	Execute(ctx context.Context, job *RawBody) error // 定义队列任务执行时的方法：执行成功返回nil，执行失败返回error
 }
@@ -154,6 +155,11 @@ func (task *DefaultTaskSetting) MaxTries() int64 {
 // RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
 func (task *DefaultTaskSetting) RetryInterval() int64 {
 	return 0
+}
+
+// Timeout 任务最大执行超时时长：默认超时时长为120秒
+func (task *DefaultTaskSetting) Timeout() time.Duration {
+	return 120 * time.Second
 }
 
 // jobProperty 公共的job实现类内部属性

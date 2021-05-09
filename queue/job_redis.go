@@ -1,7 +1,8 @@
 package queue
 
 import (
-	"github.com/go-redis/redis/v7"
+	"context"
+	"github.com/go-redis/redis/v8"
 	"sync"
 	"time"
 )
@@ -26,8 +27,10 @@ func (job *JobRedis) Release(delay int64) (err error) {
 
 	job.isReleased = true
 
+	ctx := context.Background()
 	// delete reserved zSet, then push it to delayed zSet
 	err = job.luaScripts.Release().Run(
+		ctx,
 		job.redis,
 		[]string{job.basic.delayedName(job.name), job.basic.reservedName(job.name)},
 		job.reserved,
@@ -44,7 +47,8 @@ func (job *JobRedis) Delete() (err error) {
 	job.isDeleted = true
 
 	// delete reserved job from zSet
-	err = job.redis.ZRem(job.basic.reservedName(job.name), job.reserved).Err()
+	ctx := context.Background()
+	err = job.redis.ZRem(ctx, job.basic.reservedName(job.name), job.reserved).Err()
 
 	return err
 }
