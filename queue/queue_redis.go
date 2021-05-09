@@ -5,8 +5,9 @@
 package queue
 
 import (
+	"context"
 	"errors"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"sync"
 	"time"
 )
@@ -36,7 +37,9 @@ type redisQueue struct {
 
 // Size 获取队列长度
 func (r *redisQueue) Size(queue string) (size int64) {
+	ctx := context.Background()
 	result, _ := r.luaScripts.Size().Run(
+		ctx,
 		r.connection,
 		[]string{r.name(queue), r.delayedName(queue), r.reservedName(queue)},
 	).Int64()
@@ -45,7 +48,8 @@ func (r *redisQueue) Size(queue string) (size int64) {
 
 // Push 投递一条任务到队列
 func (r *redisQueue) Push(queue string, payload interface{}) (err error) {
-	return r.connection.RPush(queue, payload).Err()
+	ctx := context.Background()
+	return r.connection.RPush(ctx, queue, payload).Err()
 }
 
 // Later 延迟指定时长后执行的延迟任务
@@ -59,7 +63,8 @@ func (r *redisQueue) LaterAt(queue string, timeAt time.Time, payload interface{}
 		Score:  float64(timeAt.Unix()),
 		Member: payload,
 	}
-	return r.connection.ZAdd(r.delayedName(queue), &item).Err()
+	ctx := context.Background()
+	return r.connection.ZAdd(ctx, r.delayedName(queue), &item).Err()
 }
 
 // Pop 去除弹出一条待执行的任务
@@ -71,7 +76,9 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 	now := time.Now()
 
 	// step1、migrate expired delay zSet data to queue list
+	ctx := context.Background()
 	r.luaScripts.MigrateExpiredJobs().Run(
+		ctx,
 		r.connection,
 		[]string{r.delayedName(queue), r.name(queue)},
 		now.Unix(),
@@ -79,6 +86,7 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 
 	// step2、migrate expired reserved zSet data to queue list
 	r.luaScripts.MigrateExpiredJobs().Run(
+		ctx,
 		r.connection,
 		[]string{r.reservedName(queue), r.name(queue)},
 		now.Unix(),
@@ -86,6 +94,7 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 
 	// step3、get one item from queue list
 	ret3, err := r.luaScripts.Pop().Run(
+		ctx,
 		r.connection,
 		[]string{r.name(queue), r.reservedName(queue)}, // 从list移动到reserved的zSet
 		now.Unix(),                         // 当前时间戳，用于填充为0的首次取出时间（PopTime字段）
@@ -117,6 +126,8 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 		return nil, false
 	}
 
+	// set job timeoutAt
+	// rJob.TimeoutAt = now.Add(time.Duration(reserved.Timeout) * time.Second).Unix()
 	return &JobRedis{
 		redis:      r.connection,
 		lock:       sync.Mutex{},
@@ -131,6 +142,8 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 			isDeleted:  false,
 			hasFailed:  false,
 			popTime:    time.Unix(reserved.PopTime, 0),
+			timeout:    time.Duration(reserved.Timeout) * time.Second,
+			timeoutAt:  now.Add(time.Duration(reserved.Timeout) * time.Second),
 		},
 	}, true
 }

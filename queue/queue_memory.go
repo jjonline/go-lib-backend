@@ -162,6 +162,8 @@ func (m *memoryQueue) Pop(queue string) (job JobIFace, exist bool) {
 			isDeleted:  false,
 			hasFailed:  false,
 			popTime:    time.Unix(node.Payload.PopTime, 0),
+			timeout:    time.Duration(payload.Timeout) * time.Second,
+			timeoutAt:  now.Add(time.Duration(payload.Timeout) * time.Second),
 		},
 	}, true
 }

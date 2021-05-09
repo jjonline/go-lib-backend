@@ -4,7 +4,7 @@
  */
 package queue
 
-import "github.com/go-redis/redis/v7"
+import "github.com/go-redis/redis/v8"
 
 // luaScripts redis lua
 type luaScripts struct{}
