@@ -235,7 +235,10 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		zap.Any("payload", job.Payload()),
 	)
 
-	ctx := context.Background()
+	// timeout context control
+	ctx, cancelFunc := context.WithTimeout(context.Background(), job.Timeout())
+	defer cancelFunc()
+
 	err := task.Execute(ctx, job.Payload().RawBody())
 	if err == nil {
 		// step5、任务类执行成功：删除任务即可

@@ -79,6 +79,16 @@ func (job *JobMemory) PopTime() (time time.Time) {
 	return job.popTime
 }
 
+// Timeout 任务超时时长
+func (job *JobMemory) Timeout() (time time.Duration) {
+	return job.jobProperty.timeout
+}
+
+// TimeoutAt 任务job执行超时的时刻
+func (job *JobMemory) TimeoutAt() (time time.Time) {
+	return job.jobProperty.timeoutAt
+}
+
 func (job *JobMemory) HasFailed() (hasFail bool) {
 	return job.hasFailed
 }

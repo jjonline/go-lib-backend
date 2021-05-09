@@ -75,6 +75,16 @@ func (job *JobRedis) PopTime() (time time.Time) {
 	return job.popTime
 }
 
+// Timeout 任务超时时长
+func (job *JobRedis) Timeout() (time time.Duration) {
+	return job.jobProperty.timeout
+}
+
+// TimeoutAt 任务job执行超时的时刻
+func (job *JobRedis) TimeoutAt() (time time.Time) {
+	return job.jobProperty.timeoutAt
+}
+
 func (job *JobRedis) HasFailed() (hasFail bool) {
 	job.lock.Lock()
 	defer job.lock.Unlock()

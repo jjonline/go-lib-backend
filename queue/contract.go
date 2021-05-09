@@ -58,6 +58,8 @@ type JobIFace interface {
 	IsReleased() (released bool)     // 检查任务是否已释放
 	Attempts() (attempt int64)       // 获取任务已尝试执行过的次数
 	PopTime() (time time.Time)       // 获取任务首次被pop取出的时刻
+	Timeout() (time time.Duration)   // 任务超时时长
+	TimeoutAt() (time time.Time)     // 任务执行超时的时刻
 	HasFailed() (hasFail bool)       // 检测当前job任务执行是否出现了错误
 	MarkAsFailed()                   // 设置当前job任务执行出现了错误
 	Failed(err error)                // 设置任务执行失败
@@ -119,6 +121,8 @@ type Payload struct {
 	Attempts      int64  `json:"Attempts"`      // 任务已被尝试执行的的次数
 	Payload       []byte `json:"Payload"`       // 任务参数比特字面量，可decode成具体job被execute时的类型
 	PopTime       int64  `json:"PopTime"`       // 任务首次被取出执行的时间戳
+	Timeout       int64  `json:"Timeout"`       // 任务最大执行超时时长，单位：秒
+	TimeoutAt     int64  `json:"TimeoutAt"`     // 任务超时时刻时间戳
 }
 
 // RawBody PayLoad结构体获取载体实体
@@ -164,15 +168,17 @@ func (task *DefaultTaskSetting) Timeout() time.Duration {
 
 // jobProperty 公共的job实现类内部属性
 type jobProperty struct {
-	handler    QueueIFace // 所属队列实现hand
-	name       string     // 队列名字
-	job        string     // job内部存储实体
-	reserved   string     // 已标记执行中job内部存储实体
-	payload    *Payload   // job任务payload
-	isReleased bool       // 是否已释放标记
-	isDeleted  bool       // 是否已删除标记
-	hasFailed  bool       // 是否已失败标记
-	popTime    time.Time  // 任务被pop取出的时刻（等级于开始执行时刻）
+	handler    QueueIFace    // 所属队列实现hand
+	name       string        // 队列名字
+	job        string        // job内部存储实体
+	reserved   string        // 已标记执行中job内部存储实体
+	payload    *Payload      // job任务payload
+	isReleased bool          // 是否已释放标记
+	isDeleted  bool          // 是否已删除标记
+	hasFailed  bool          // 是否已失败标记
+	popTime    time.Time     // 任务被pop取出的时刻（等级于开始执行时刻）
+	timeout    time.Duration // 任务超时时长
+	timeoutAt  time.Time     // 任务执行超时的时刻
 }
 
 // endregion

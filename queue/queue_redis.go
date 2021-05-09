@@ -126,6 +126,8 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 		return nil, false
 	}
 
+	// set job timeoutAt
+	// rJob.TimeoutAt = now.Add(time.Duration(reserved.Timeout) * time.Second).Unix()
 	return &JobRedis{
 		redis:      r.connection,
 		lock:       sync.Mutex{},
@@ -140,6 +142,8 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 			isDeleted:  false,
 			hasFailed:  false,
 			popTime:    time.Unix(reserved.PopTime, 0),
+			timeout:    time.Duration(reserved.Timeout) * time.Second,
+			timeoutAt:  now.Add(time.Duration(reserved.Timeout) * time.Second),
 		},
 	}, true
 }
