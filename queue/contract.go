@@ -157,9 +157,9 @@ func (task *DefaultTaskSetting) RetryInterval() int64 {
 	return 0
 }
 
-// Timeout 任务最大执行超时时长：默认超时时长为120秒
+// Timeout 任务最大执行超时时长：默认超时时长为900秒
 func (task *DefaultTaskSetting) Timeout() time.Duration {
-	return 120 * time.Second
+	return 900 * time.Second
 }
 
 // jobProperty 公共的job实现类内部属性

@@ -8,7 +8,21 @@ Queue队列为`生产 -> 消费`模型的简单实现，即：`producer -> consu
 
 > **由于多个独立进程间内存隔离，以及进程退出后进程所属内存销毁的原因，`memory`方案在进程退出后未消费的队列数据会丢失，故而仅能用于开发调试环境，且生产端和消费端只能在同一进程。**
 
-## 二、使用示例
+## 二、版本差异说明
+
+## v0.7.x系列
+
+`v0.7.x`系列底层使用了 [redis-v7](https://github.com/go-redis/redis/releases/tag/v7.4.0)
+
+go-redis库的v7版本和v8版本存在极其大的差异，为了兼容老项目提供`v0.7.x`系列版本。
+
+**请注意：`v0.7.x`系列任务类不支持超时控制。**
+
+## 非v0.7.x系列
+
+`v0.7.x`版本号之外均使用go-redis v8，并且任务类支持`context.Context`上下文控制和超时控制。
+
+## 三、使用示例
 
 完整使用示例查看 [example](https://github.com/jjonline/go-mod-library/tree/master/queue/example) 目录代码结构
 
@@ -129,7 +143,7 @@ service.DelayAt(&tasks.TestTask{}, "job执行时的参数", time.Time类型的�
 service.Delay(&tasks.TestTask{}, "job执行时的参数", time.Duration类型的时长)
 ````
 
-## 三、重试次数 & 重试间隔 & 超时
+## 四、重试次数 & 重试间隔 & 超时
 
 > **队列保证每个job至少能被执行1次**
 
@@ -151,13 +165,11 @@ service.Delay(&tasks.TestTask{}, "job执行时的参数", time.Duration类型的
 
 ### 3.3、超时
 
-> 因goroutine无法从外部kill掉，kill掉协程只能通过终止main进程
+`v0.7.x`系列版本并不支持超时设置，只有一个900秒执行的提示 
 
-当前队列并不支持设置执行超时，即限定一个任务类最大执行时长。
+> 因goroutine无法从外部kill掉，超时控制通过`context.Context`上下文实现，需任务类自主实现超时控制的退出机制！
 
-**注意：队列有一个`900秒`的时间基准值，任务类首次执行超过15分钟未结束会记录日志，并且自动延迟15分钟后再次尝试执行，这样的结果就是可能一个job被多次执行。**
-
-> 尽量确保任务类执行一个job不要超过15分钟
+默认任务类设置最大超时时长为`900秒`，可通过任务类Timeout方法自定义超时时间。
 
 ### 3.4、约定
 
