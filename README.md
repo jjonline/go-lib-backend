@@ -37,6 +37,11 @@ git tag -a logger/v0.0.1 0a3a52e -m "打这个tag的说明"
 git push origin --tags
 # 指定tag标签
 git push origin logger/v0.0.1
+
+# 删除远程tag
+git push origin :refs/tags/[tagName]
+## 例如删除远程 logger/v1.0.0 这个tag
+git push origin :refs/tags/logger/v1.0.0
 ````
 
 ## 三、注意事项
