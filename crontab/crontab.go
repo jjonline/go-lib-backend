@@ -2,7 +2,6 @@ package crontab
 
 import (
 	"github.com/jjonline/go-mod-library/contract"
-	"github.com/jjonline/go-mod-library/logger"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 	"sync"
@@ -11,21 +10,22 @@ import (
 
 // Crontab
 type Crontab struct {
-	commands map[int]contract.Command // 注册的所有定时任务
-	cron     *cron.Cron               // 定时任务实例
-	logger   *logger.Logger           // 日志输出
-	lock     sync.Mutex               // 并发锁
+	cron   *cron.Cron  // 定时任务实例
+	logger *zap.Logger // 日志输出
+	lock   sync.Mutex  // 并发锁
 }
 
+//  registeredCommand 已注册的定时任务映射map
+var registeredCommand = make(map[int]contract.Command)
+
 // New 实例化crontab实例
-func New(logger *logger.Logger) *Crontab {
+func New(logger *zap.Logger) *Crontab {
 	log := cronLog{logger: logger}
 	timeZone := time.FixedZone("Asia/Shanghai", 8*3600) // 东八区
 	return &Crontab{
-		commands: make(map[int]contract.Command),
-		cron:     cron.New(cron.WithSeconds(), cron.WithLogger(log), cron.WithLocation(timeZone)),
-		logger:   logger,
-		lock:     sync.Mutex{},
+		cron:   cron.New(cron.WithSeconds(), cron.WithLogger(log), cron.WithLocation(timeZone)),
+		logger: logger,
+		lock:   sync.Mutex{},
 	}
 }
 
@@ -42,7 +42,7 @@ func (c *Crontab) Register(spec string, command contract.Command) {
 		defer func() {
 			if err := recover(); err != nil {
 				// record log
-				c.logger.Zap.Error(
+				c.logger.Error(
 					"crontab.panic",
 					zap.String("signature", command.Signature()),
 					zap.String("description", command.Description()),
@@ -53,15 +53,8 @@ func (c *Crontab) Register(spec string, command contract.Command) {
 
 		// 执行定时任务
 		if err := command.Execute(); err != nil {
-			c.logger.Zap.Error(
-				"crontab.error",
-				zap.String("signature", command.Signature()),
-				zap.String("description", command.Description()),
-				zap.Stack("stack"),
-			)
-		} else {
-			c.logger.Zap.Info(
-				"crontab.execute",
+			c.logger.Error(
+				"crontab.execute.failed",
 				zap.String("signature", command.Signature()),
 				zap.String("description", command.Description()),
 				zap.String("spec", spec),
@@ -71,26 +64,31 @@ func (c *Crontab) Register(spec string, command contract.Command) {
 
 	// 注册任务
 	entry_id, err := c.cron.AddFunc(spec, wrapper)
-	if err == nil {
-		c.logger.Zap.Info(
+	if err != nil {
+		c.logger.Error(
+			"crontab.register.err",
+			zap.String("signature", command.Signature()),
+			zap.String("description", command.Description()),
+			zap.String("spec", spec),
+			zap.Error(err),
+		)
+	} else {
+		c.logger.Info(
 			"crontab.register",
 			zap.String("signature", command.Signature()),
 			zap.String("description", command.Description()),
 			zap.String("spec", spec),
 		)
-		c.commands[int(entry_id)] = command
+		registeredCommand[int(entry_id)] = command
 	}
 }
 
 // Start 启动定时任务守护进程
 func (c *Crontab) Start() {
-	c.logger.Info("crontab.started")
 	c.cron.Start()
 }
 
 // Shutdown 优雅停止定时任务守护进程
-func (c *Crontab) Shutdown() error {
+func (c *Crontab) Shutdown() {
 	c.cron.Stop()
-	c.logger.Info("crontab.stopped")
-	return nil
 }
