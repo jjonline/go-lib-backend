@@ -234,6 +234,8 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		zap.Int64("worker_id", workerID),
 		zap.Any("payload", job.Payload()),
 	)
+
+	ctx := context.Background()
 	err := task.Execute(ctx, job.Payload().RawBody())
 	if err == nil {
 		// step5、任务类执行成功：删除任务即可
