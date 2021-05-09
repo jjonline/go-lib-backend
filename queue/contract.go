@@ -6,6 +6,7 @@
 package queue
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 	"time"
@@ -136,10 +137,10 @@ type FailedJobHandler func(payload *Payload, err error) error
 
 // TaskIFace 定义队列Job任务执行逻辑的契约(队列任务执行类)
 type TaskIFace interface {
-	MaxTries() int64            // 定义队列任务最大尝试次数：任务执行的最大尝试次数
-	RetryInterval() int64       // 定义队列任务最大尝试间隔：当任务执行失败后再次尝试执行的间隔时长，单位：秒
-	Name() string               // 定义队列名称方法：返回队列名称
-	Execute(job *RawBody) error // 定义队列任务执行时的方法：执行成功返回nil，执行失败返回error
+	MaxTries() int64                                 // 定义队列任务最大尝试次数：任务执行的最大尝试次数
+	RetryInterval() int64                            // 定义队列任务最大尝试间隔：当任务执行失败后再次尝试执行的间隔时长，单位：秒
+	Name() string                                    // 定义队列名称方法：返回队列名称
+	Execute(ctx context.Context, job *RawBody) error // 定义队列任务执行时的方法：执行成功返回nil，执行失败返回error
 }
 
 // DefaultTaskSetting 默认task设置struct：实现默认的最大尝试次数、尝试间隔时长、最大执行时长
