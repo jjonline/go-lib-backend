@@ -44,9 +44,9 @@ func (r *queueBasic) marshalPayload(task TaskIFace, taskParam interface{}, ID st
 		RetryInterval: task.RetryInterval(),
 		Attempts:      0,
 		Payload:       []byte(IFaceToString(taskParam)),
-		PopTime:       0,                     // 首次被取出开始执行的时间戳，取出的时候才去设置
-		Timeout:       int64(task.Timeout()), // 最大执行秒数
-		TimeoutAt:     0,                     // 超时时刻，被执行时刻才会去设置
+		PopTime:       0,                               // 首次被取出开始执行的时间戳，取出的时候才去设置
+		Timeout:       int64(task.Timeout().Seconds()), // 最大执行秒数
+		TimeoutAt:     0,                               // 超时时刻，被执行时刻才会去设置
 	})
 }
 
