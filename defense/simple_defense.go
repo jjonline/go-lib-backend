@@ -1,8 +1,9 @@
 package defense
 
 import (
+	"context"
 	"errors"
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis/v8"
 	"sync"
 	"time"
 )
@@ -68,10 +69,11 @@ func (s *SimpleDefense) DefenseCustom(defenseKey string, defenseDuration time.Du
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	ctx := context.TODO()
 	// 没有这个key，设置key并返回
-	res := s.redis.Get(defenseKey)
+	res := s.redis.Get(ctx, defenseKey)
 	if res.Err() == redis.Nil {
-		s.redis.Set(defenseKey, 1, defenseDuration)
+		s.redis.Set(ctx, defenseKey, 1, defenseDuration)
 		return nil
 	}
 
@@ -83,17 +85,17 @@ func (s *SimpleDefense) DefenseCustom(defenseKey string, defenseDuration time.Du
 
 	// 防御次数超标：返回防御拦截同时再次延长key有效期
 	if tryTimes+1 >= defenseTimes {
-		_ = s.redis.Expire(defenseKey, defenseDuration)
+		_ = s.redis.Expire(ctx, defenseKey, defenseDuration)
 		return ErrInDefense
 	}
 
 	// 不处于拦截状态，累加1
-	_ = s.redis.Set(defenseKey, tryTimes+1, defenseDuration)
+	_ = s.redis.Set(ctx, defenseKey, tryTimes+1, defenseDuration)
 
 	return nil
 }
 
 // Release 释放指定防御
 func (s *SimpleDefense) Release(defenseKey string) {
-	_ = s.redis.Del(defenseKey)
+	_ = s.redis.Del(context.TODO(), defenseKey)
 }
