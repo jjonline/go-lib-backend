@@ -12,7 +12,7 @@ func (t TestCommandOk) Description() string {
 	return "this is a test crontab command implement"
 }
 
-func (t TestCommandOk) Execute() error {
+func (t TestCommandOk) Execute(args ...[]string) error {
 	return nil
 }
 
