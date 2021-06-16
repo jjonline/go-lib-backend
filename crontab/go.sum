@@ -4,8 +4,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
-github.com/jjonline/go-mod-library/contract v1.0.0 h1:NlkLPURAVX9hn4+jArIZRf/TRZKfztc56m3LH/ajs1U=
-github.com/jjonline/go-mod-library/contract v1.0.0/go.mod h1:vPZeRRUstE+k6/d1haL+LIprbKZ92kh8TjEPzgtVkUU=
+github.com/jjonline/go-mod-library/contract v1.1.0 h1:2AhHhW7UkBAYjUMkI13BeuWYX9kk2loNMMMRxOvepio=
+github.com/jjonline/go-mod-library/contract v1.1.0/go.mod h1:vPZeRRUstE+k6/d1haL+LIprbKZ92kh8TjEPzgtVkUU=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=

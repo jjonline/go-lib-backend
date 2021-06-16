@@ -12,7 +12,7 @@ func (t TestCommandPanic) Description() string {
 	return "this is a test crontab command implement"
 }
 
-func (t TestCommandPanic) Execute() error {
+func (t TestCommandPanic) Execute(args ...[]string) error {
 	panic("crontab test panic")
 }
 

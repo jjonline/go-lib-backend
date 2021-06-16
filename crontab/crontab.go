@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Crontab
+// Crontab 定时任务实现
 type Crontab struct {
 	cron   *cron.Cron  // 定时任务实例
 	logger *zap.Logger // 日志输出
