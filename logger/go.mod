@@ -6,4 +6,5 @@ require (
 	github.com/gin-gonic/gin v1.7.2
 	github.com/go-redis/redis/v8 v8.8.2
 	go.uber.org/zap v1.16.0
+	gorm.io/gorm v1.21.10
 )
