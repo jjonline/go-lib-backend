@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/jjonline/go-mod-library/queue"
-	"time"
 )
 
 type TestTask struct {
@@ -17,7 +16,7 @@ func (t TestTask) Name() string {
 
 func (t TestTask) Execute(ctx context.Context, job *queue.RawBody) error {
 	fmt.Println(job.ID)
-	time.Sleep(12 * time.Second)
+	// time.Sleep(12 * time.Second)
 	return fmt.Errorf("test error")
 }
 

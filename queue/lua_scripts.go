@@ -18,6 +18,7 @@ return redis.call('llen', KEYS[1]) + redis.call('zcard', KEYS[2]) + redis.call('
 -- Pop the first job off of the queue...
 local job = redis.call('lpop', KEYS[1])
 local reserved = false
+local timeoutAt = 0
 
 if(job ~= false) then
 	-- Increment the attempt count and place job on the reserved queue...
@@ -26,9 +27,15 @@ if(job ~= false) then
 	if reserved['PopTime'] <= 0 then
 		reserved['PopTime'] = tonumber(ARGV[1])
 	end
+	-- calc next attempts time
+	timeoutAt = tonumber(ARGV[1]) + tonumber(reserved['Timeout'])
+	-- set reserved val
 	reserved['Attempts'] = reserved['Attempts'] + 1
+	reserved['TimeoutAt'] = timeoutAt
+	-- encode to string
 	reserved = cjson.encode(reserved)
-	redis.call('zadd', KEYS[2], ARGV[2], reserved)
+	-- set next attempt time as
+	redis.call('zadd', KEYS[2], timeoutAt, reserved)
 end
 
 return {job, reserved}
@@ -61,8 +68,9 @@ return val
 `)
 )
 
+// Size
 /**
- * Size Get the Lua script for computing the size of queue.
+ * Get the Lua script for computing the size of queue.
  *
  * KEYS[1] - The name of the primary queue
  * KEYS[2] - The name of the "delayed" queue
@@ -74,12 +82,13 @@ func (lua *luaScripts) Size() *redis.Script {
 	return size
 }
 
+// Pop
 /**
- * Pop Get the Lua script for popping the next job off of the queue.
+ * Get the Lua script for popping the next job off of the queue.
  *
  * KEYS[1] - The queue to pop jobs from, for example: queues:foo
  * KEYS[2] - The queue to place reserved jobs on, for example: queues:foo:reserved
- * ARGV[1] - The time at which the reserved job will expire
+ * ARGV[1] - The Now unix time
  *
  * @return string
  */
@@ -87,8 +96,9 @@ func (lua *luaScripts) Pop() *redis.Script {
 	return pop
 }
 
+// Release
 /**
- * Release Get the Lua script for releasing reserved jobs.
+ * Get the Lua script for releasing reserved jobs.
  *
  * KEYS[1] - The "delayed" queue we release jobs onto, for example: queues:foo:delayed
  * KEYS[2] - The queue the jobs are currently on, for example: queues:foo:reserved
@@ -101,8 +111,9 @@ func (lua *luaScripts) Release() *redis.Script {
 	return release
 }
 
+// MigrateExpiredJobs
 /**
- * MigrateExpiredJobs Get the Lua script to migrate expired jobs back onto the queue.
+ * Get the Lua script to migrate expired jobs back onto the queue.
  *
  * KEYS[1] - The queue we are removing jobs from, for example: queues:foo:reserved
  * KEYS[2] - The queue we are moving jobs to, for example: queues:foo

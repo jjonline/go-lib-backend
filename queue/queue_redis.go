@@ -67,7 +67,7 @@ func (r *redisQueue) LaterAt(queue string, timeAt time.Time, payload interface{}
 	return r.connection.ZAdd(ctx, r.delayedName(queue), &item).Err()
 }
 
-// Pop 去除弹出一条待执行的任务
+// Pop 取出弹出一条待执行的任务
 func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 	// step1、调度延迟任务，从延迟有序集合（queueName:delayed）取出Score值小于等于当前时间戳的延迟任务丢到List队列
 	// step2、处理失败重试任务：从保留有序集合（queueName:reserved）取出Score值小于等于当前时间戳的保留任务丢到List队列
@@ -97,8 +97,7 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 		ctx,
 		r.connection,
 		[]string{r.name(queue), r.reservedName(queue)}, // 从list移动到reserved的zSet
-		now.Unix(),                         // 当前时间戳，用于填充为0的首次取出时间（PopTime字段）
-		now.Add(DefaultMaxExecuteDuration).Unix(), // 设置reserved的zSet的Score为执行过期的时间戳【最多+15min】
+		now.Unix(), // 当前时间戳，用于填充为0的首次取出时间（PopTime字段）
 	).Result()
 
 	if err != nil {
