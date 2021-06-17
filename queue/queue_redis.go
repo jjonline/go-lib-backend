@@ -98,7 +98,7 @@ func (r *redisQueue) Pop(queue string) (job JobIFace, exist bool) {
 		r.connection,
 		[]string{r.name(queue), r.reservedName(queue)}, // 从list移动到reserved的zSet
 		now.Unix(),                         // 当前时间戳，用于填充为0的首次取出时间（PopTime字段）
-		now.Add(maxExecuteDuration).Unix(), // 设置reserved的zSet的Score为执行过期的时间戳【最多+15min】
+		now.Add(DefaultMaxExecuteDuration).Unix(), // 设置reserved的zSet的Score为执行过期的时间戳【最多+15min】
 	).Result()
 
 	if err != nil {

@@ -7,7 +7,6 @@ package queue
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"go.uber.org/zap"
 	"math/rand"
@@ -22,15 +21,6 @@ import (
 // 2、维护管理工作进程worker
 // 3、队列相关管控功能实现：启动、优雅停止、协程并发调度等
 // *************************************************
-
-// shutdownPollIntervalMax 优雅关闭进程最大重复尝试间隔时长
-const shutdownPollIntervalMax = 500 * time.Millisecond
-
-// ErrQueueClosed 队列处于优雅关闭或关闭状态错误
-var ErrQueueClosed = errors.New("queue: Queue closed")
-
-// ErrMaxAttemptsExceeded 尝试执行次数超限
-var ErrMaxAttemptsExceeded = errors.New("queue: max execute attempts")
 
 type atomicBool int32
 
@@ -192,8 +182,16 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 				zap.Any("error", err),
 			)
 
-			// 检查任务尝试执行次数 & 标记失败状态
-			m.markJobAsFailedIfWillExceedMaxAttempts(job)
+			var eErr error
+			switch t := err.(type) {
+			case error:
+				eErr = t
+			default:
+				eErr = fmt.Errorf("%s", t)
+			}
+
+			// panic: 检查任务尝试执行次数 & 标记失败状态
+			m.markJobAsFailedIfWillExceedMaxAttempts(job, eErr)
 		}
 	}()
 
@@ -205,7 +203,7 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	// step2、因为没有超时主动退出机制当任务执行超时仍在执行时标记再次延迟
 	if _, exist := m.inWorkingMap[job.Payload().ID]; exist {
 		m.logger.Warn(
-			"abort.for.waiting.prev.job.finish",
+			ErrAbortForWaitingPrevJobFinish.Error(),
 			zap.String("queue", job.GetName()),
 			zap.Any("payload", job.Payload()),
 			zap.Time("pop_time", job.PopTime()),
@@ -214,8 +212,12 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		// 当前任务作为延迟任务再次投递
 		// warning 当前正在执行的可能执行成功这样会导致一条任务多次被成功执行，需要任务类自主实现业务逻辑幂等
 		if payload, err := json.Marshal(job.Payload()); err == nil {
-			_ = job.Queue().Later(job.GetName(), maxExecuteDuration, payload)
+			_ = job.Queue().Later(job.GetName(), DefaultMaxExecuteDuration, payload)
 		}
+
+		// 触发记录可能失败日志的记录，便于回溯
+		m.recordFailedJob(job, ErrAbortForWaitingPrevJobFinish)
+
 		return
 	}
 
@@ -229,7 +231,7 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 
 	// step4、execute job task with timeout control
 	m.logger.Info(
-		"queue.job.processing",
+		textJobProcessing,
 		zap.String("queue", job.GetName()),
 		zap.Int64("worker_id", workerID),
 		zap.Any("payload", job.Payload()),
@@ -243,7 +245,7 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	if err == nil {
 		// step5、任务类执行成功：删除任务即可
 		m.logger.Info(
-			"queue.job.processed",
+			textJobProcessed,
 			zap.String("queue", job.GetName()),
 			zap.Int64("worker_id", workerID),
 			zap.Any("payload", job.Payload()),
@@ -253,14 +255,14 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	} else {
 		// step6、任务类执行失败：依赖重试设置执行重试or最终执行失败处理
 		m.logger.Warn(
-			"queue.job.failed",
+			textJobFailed,
 			zap.String("queue", job.GetName()),
 			zap.Int64("worker_id", workerID),
 			zap.Any("payload", job.Payload()),
 			zap.Duration("duration", time.Now().Sub(job.PopTime())),
 			zap.Error(err),
 		)
-		m.markJobAsFailedIfWillExceedMaxAttempts(job)
+		m.markJobAsFailedIfWillExceedMaxAttempts(job, err)
 	}
 }
 
@@ -282,9 +284,9 @@ func (m *manager) looperJitter() time.Duration {
 // 2、如果未超限则返回false
 func (m *manager) markJobAsFailedIfAlreadyExceedsMaxAttempts(job JobIFace) (needSop bool) {
 	// step1、执行时长检查，持续执行超过最大执行时长时记录日志
-	if time.Now().Sub(job.PopTime()) >= maxExecuteDuration {
+	if time.Now().Sub(job.PopTime()) >= DefaultMaxExecuteDuration {
 		m.logger.Warn(
-			"execute.time.too.long",
+			textJobTooLong,
 			zap.String("queue", job.GetName()),
 			zap.Any("payload", job.Payload()),
 			zap.Time("pop_time", job.PopTime()),
@@ -305,11 +307,11 @@ func (m *manager) markJobAsFailedIfAlreadyExceedsMaxAttempts(job JobIFace) (need
 // markJobAsFailedIfWillExceedMaxAttempts job执行`之后`检测尝试次数是否超限
 // 1、检查job执行是否超过基准时间以记录日志
 // 2、检查job执行尝试次数
-func (m *manager) markJobAsFailedIfWillExceedMaxAttempts(job JobIFace) {
+func (m *manager) markJobAsFailedIfWillExceedMaxAttempts(job JobIFace, err error) {
 	// step1、执行时长检查，持续执行超过最大执行时长时记录日志
-	if time.Now().Sub(job.PopTime()) >= maxExecuteDuration {
+	if time.Now().Sub(job.PopTime()) >= DefaultMaxExecuteDuration {
 		m.logger.Warn(
-			"execute.time.too.long",
+			textJobTooLong,
 			zap.String("queue", job.GetName()),
 			zap.Any("payload", job.Payload()),
 			zap.Time("pop_time", job.PopTime()),
@@ -319,7 +321,7 @@ func (m *manager) markJobAsFailedIfWillExceedMaxAttempts(job JobIFace) {
 	// step2、检查最大尝试执行次数是否超限
 	if job.Attempts() >= job.Payload().MaxTries {
 		// 超过最大重试次数：本次执行失败 && 任务类最终执行失败 && delete任务
-		m.failJob(job, ErrMaxAttemptsExceeded)
+		m.failJob(job, err)
 	} else {
 		// 任务可以重试：本次执行失败 && 任务类还可以重试 && release任务
 		_ = job.Release(job.Payload().RetryInterval)
@@ -339,7 +341,7 @@ func (m *manager) failJob(job JobIFace, err error) {
 
 	// tag log
 	m.logger.Error(
-		"queue.fail",
+		textJobFailedLog,
 		zap.String("queue", job.GetName()),
 		zap.Any("payload", job.Payload()),
 		zap.Error(err),
@@ -349,6 +351,11 @@ func (m *manager) failJob(job JobIFace, err error) {
 	job.Failed(err)
 
 	// -> 4、queue级别依赖是否有设置失败任务处理器动作
+	m.recordFailedJob(job, err)
+}
+
+// recordFailedJob 触发记录可能的失败任务
+func (m *manager) recordFailedJob(job JobIFace, err error) {
 	if m.failedJobHandler != nil {
 		_ = m.failedJobHandler(job.Payload(), err)
 	}

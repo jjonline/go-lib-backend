@@ -8,12 +8,35 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 )
 
-// maxExecuteDuration job任务执行时长极限预警值：15分钟
-var maxExecuteDuration = 900 * time.Second
+const (
+	// shutdownPollIntervalMax 优雅关闭进程最大重复尝试间隔时长
+	shutdownPollIntervalMax = 500 * time.Millisecond
+	// DefaultMaxExecuteDuration job任务执行时长极限预警值：15分钟
+	DefaultMaxExecuteDuration = 900 * time.Second
+)
+
+var (
+	// ErrQueueClosed 队列处于优雅关闭或关闭状态错误
+	ErrQueueClosed = errors.New("queue.error.queue.closed")
+	// ErrMaxAttemptsExceeded 尝试执行次数超限
+	ErrMaxAttemptsExceeded = errors.New("queue.max.execute.attempts")
+	// ErrAbortForWaitingPrevJobFinish 等待上一次任务执行结束退出
+	ErrAbortForWaitingPrevJobFinish = errors.New("queue.abort.for.waiting.prev.job.finish")
+)
+
+// 任务输出相关文案变量统一定义：便于日志追踪
+var (
+	textJobProcessing = "queue.job.processing"   // job开始执行标记文案
+	textJobProcessed  = "queue.job.processed"    // job已执行成功标记文案
+	textJobFailed     = "queue.job.failed"       // job已执行失败标记文案<任务类返回了error>
+	textJobTooLong    = "queue.execute.too.long" // job多次尝试执行检查距离上次执行时间差已经大于 DefaultMaxExecuteDuration
+	textJobFailedLog  = "queue.failed.log"       // job执行失败标记文案
+)
 
 // region queue队列抽象
 
@@ -163,7 +186,7 @@ func (task *DefaultTaskSetting) RetryInterval() int64 {
 
 // Timeout 任务最大执行超时时长：默认超时时长为900秒
 func (task *DefaultTaskSetting) Timeout() time.Duration {
-	return 900 * time.Second
+	return DefaultMaxExecuteDuration
 }
 
 // jobProperty 公共的job实现类内部属性
