@@ -17,7 +17,12 @@ import (
 // XRequestID 为每个请求分配的请求编号key和名称
 // 1、优先从header头里读由nginx维护的并且转发过来的x-request-id
 // 2、如果读取不到则使用当前纳秒时间戳字符串
-const XRequestID = "x-request-id"
+const (
+	XRequestID          = "x-request-id"       // 请求ID名称
+	TextGinPanic        = "gin.panic.recovery" // gin panic日志标记
+	TextGinRequest      = "gin.request"        // gin request请求日志标记
+	TextGinResponseFail = "gin.response.fail"  // gin 业务层面失败响应日志标记
+)
 
 // GinRecovery zap实现的gin-recovery日志中间件<gin.HandlerFunc的实现>
 func GinRecovery(ctx *gin.Context) {
@@ -38,8 +43,8 @@ func GinRecovery(ctx *gin.Context) {
 
 			// record log
 			zapLogger.Error(
-				"gin.panic.recovery",
-				zap.String("module", "gin.panictx.recovery"),
+				TextGinPanic,
+				zap.String("module", TextGinPanic),
 				zap.String("url", ctx.Request.URL.Path),
 				zap.String("request", string(httpRequest)),
 				zap.Any("error", err),
@@ -64,11 +69,7 @@ func GinLogger(ctx *gin.Context) {
 	start := time.Now()
 
 	// set XRequestID
-	requestID := ctx.GetHeader(XRequestID)
-	if requestID == "" {
-		requestID = strconv.FormatInt(start.UnixNano(), 10)
-	}
-	ctx.Set(XRequestID, requestID)
+	requestID := setRequestID(ctx)
 
 	// +++++++++++++++++++++++++
 	// 记录请求 body 体
@@ -81,7 +82,7 @@ func GinLogger(ctx *gin.Context) {
 
 	latencyTime := time.Now().Sub(start)
 	fields := []zap.Field{
-		zap.String("module", "request"),
+		zap.String("module", TextGinRequest),
 		zap.String("ua", ctx.GetHeader("User-Agent")),
 		zap.String("method", ctx.Request.Method),
 		zap.String("req_id", requestID),
@@ -99,6 +100,44 @@ func GinLogger(ctx *gin.Context) {
 	} else {
 		zapLogger.Info(ctx.Request.URL.Path, fields...)
 	}
+}
+
+// GinLogHttpFail gin框架失败响应日志处理
+func GinLogHttpFail(ctx *gin.Context, err error) {
+	if err != nil && zapLogger.Core().Enabled(zap.InfoLevel) {
+		zapLogger.Warn(
+			TextGinResponseFail,
+			zap.String("module", TextGinResponseFail),
+			zap.String("ua", ctx.GetHeader("User-Agent")),
+			zap.String("method", ctx.Request.Method),
+			zap.String("req_id", GetRequestID(ctx)),
+			zap.String("client_ip", ctx.ClientIP()),
+			zap.String("url_path", ctx.Request.URL.Path),
+			zap.String("url_query", ctx.Request.URL.RawQuery),
+			zap.String("url", ctx.Request.URL.String()),
+			zap.Int("http_status", ctx.Writer.Status()),
+			zap.Error(err),
+			zap.StackSkip("stack", 2),
+		)
+	}
+}
+
+// setRequestID 内部方法设置请求ID
+func setRequestID(ctx *gin.Context) string {
+	requestID := ctx.GetHeader(XRequestID)
+	if requestID == "" {
+		requestID = strconv.FormatInt(time.Now().UnixNano(), 10)
+	}
+	ctx.Set(XRequestID, requestID)
+	return requestID
+}
+
+// GetRequestID 暴露方法：读取当前请求ID
+func GetRequestID(ctx *gin.Context) string {
+	if req_id, exist := ctx.Get(XRequestID); exist {
+		return req_id.(string)
+	}
+	return ""
 }
 
 // GetRequestBody 获取请求body体
