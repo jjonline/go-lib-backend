@@ -241,28 +241,39 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), job.Timeout())
 	defer cancelFunc()
 
-	err := task.Execute(ctx, job.Payload().RawBody())
-	if err == nil {
-		// step5、任务类执行成功：删除任务即可
-		m.logger.Info(
-			textJobProcessed,
-			zap.String("queue", job.GetName()),
-			zap.Int64("worker_id", workerID),
-			zap.Any("payload", job.Payload()),
-			zap.Duration("duration", time.Now().Sub(job.PopTime())),
-		)
-		_ = job.Delete()
-	} else {
-		// step6、任务类执行失败：依赖重试设置执行重试or最终执行失败处理
-		m.logger.Warn(
-			textJobFailed,
-			zap.String("queue", job.GetName()),
-			zap.Int64("worker_id", workerID),
-			zap.Any("payload", job.Payload()),
-			zap.Duration("duration", time.Now().Sub(job.PopTime())),
-			zap.Error(err),
-		)
-		m.markJobAsFailedIfWillExceedMaxAttempts(job, err)
+	// goroutine execute task job
+	go func() {
+		err := task.Execute(ctx, job.Payload().RawBody())
+		if err == nil {
+			// step5、任务类执行成功：删除任务即可
+			m.logger.Info(
+				textJobProcessed,
+				zap.String("queue", job.GetName()),
+				zap.Int64("worker_id", workerID),
+				zap.Any("payload", job.Payload()),
+				zap.Duration("duration", time.Now().Sub(job.PopTime())),
+			)
+			_ = job.Delete()
+		} else {
+			// step6、任务类执行失败：依赖重试设置执行重试or最终执行失败处理
+			m.logger.Error(
+				textJobFailed,
+				zap.String("queue", job.GetName()),
+				zap.Int64("worker_id", workerID),
+				zap.Any("payload", job.Payload()),
+				zap.Duration("duration", time.Now().Sub(job.PopTime())),
+			)
+			m.markJobAsFailedIfWillExceedMaxAttempts(job, err)
+		}
+		cancelFunc()
+	}()
+
+	select {
+	case <-ctx.Done():
+		// timeout to exit worker goroutine, but job may continue executed
+		m.markJobAsFailedIfWillExceedMaxAttempts(job, ctx.Err())
+		fmt.Println("timeout")
+		return
 	}
 }
 
@@ -308,8 +319,8 @@ func (m *manager) markJobAsFailedIfAlreadyExceedsMaxAttempts(job JobIFace) (need
 // 1、检查job执行是否超过基准时间以记录日志
 // 2、检查job执行尝试次数
 func (m *manager) markJobAsFailedIfWillExceedMaxAttempts(job JobIFace, err error) {
-	// step1、执行时长检查，持续执行超过最大执行时长时记录日志
-	if time.Now().Sub(job.PopTime()) >= DefaultMaxExecuteDuration {
+	// step1、执行时长检查：超时记录超时日志
+	if time.Now().Sub(job.PopTime()) >= job.Timeout() {
 		m.logger.Warn(
 			textJobTooLong,
 			zap.String("queue", job.GetName()),

@@ -189,6 +189,19 @@ func (task *DefaultTaskSetting) Timeout() time.Duration {
 	return DefaultMaxExecuteDuration
 }
 
+// DefaultTaskSettingWithoutTimeout 默认task设置struct：实现默认的最大尝试次数、尝试间隔时长、最大执行时长
+type DefaultTaskSettingWithoutTimeout struct{}
+
+// MaxTries 默认最大尝试次数1，即投递的任务仅执行1次
+func (task *DefaultTaskSettingWithoutTimeout) MaxTries() int64 {
+	return 1
+}
+
+// RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
+func (task *DefaultTaskSettingWithoutTimeout) RetryInterval() int64 {
+	return 0
+}
+
 // jobProperty 公共的job实现类内部属性
 type jobProperty struct {
 	handler    QueueIFace    // 所属队列实现hand

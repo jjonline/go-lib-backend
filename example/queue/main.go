@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/jjonline/go-mod-library/queue"
 	"github.com/jjonline/go-mod-library/example/queue/client"
 	"github.com/jjonline/go-mod-library/example/queue/tasks"
+	"github.com/jjonline/go-mod-library/queue"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"
@@ -15,12 +15,12 @@ import (
 
 func main() {
 	// init zap logger && redis client
-	zapLogger := client.NewZap("debug", "stderr").With(zap.String("module", "queue"))
+	zapLogger := client.NewZap("info", "stderr").With(zap.String("module", "queue"))
 
 	// 使用memory内存驱动
 	// !!!警告：本地memory驱动仅能用于本地开发调试，不得用于prod生产环境，此处仅为示例!!!
 	zapLogger.Info("init queue service")
-	queueService := queue.New(queue.Memory, nil, zapLogger, 5)
+	queueService := queue.New(queue.Redis, client.NewRedis(), zapLogger, 5)
 
 	// 或者使用 redis驱动：请留意redis的链接信息，示例使用了本机redis
 	// redisClient := client.NewRedis()
@@ -28,7 +28,8 @@ func main() {
 
 	// register task
 	zapLogger.Info("register task")
-	_ = queueService.BootstrapOne(&tasks.TestTask{})
+	//_ = queueService.BootstrapOne(&tasks.TestTask{})
+	_ = queueService.BootstrapOne(&tasks.TestTimeout{})
 
 	idleCloser := make(chan struct{})
 
@@ -73,6 +74,7 @@ func main() {
 
 	// test dispatch task after daemon started 10 second
 	time.AfterFunc(10 * time.Second, func() {
+		// test_task
 		fmt.Printf("1.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
 		err := queueService.Dispatch(&tasks.TestTask{}, "dispatch task")
 		if err != nil {
@@ -90,6 +92,25 @@ func main() {
 		if err != nil {
 			fmt.Printf("delayAt taks error: %s", err.Error())
 		}
+
+		// test_timeout
+		fmt.Printf("1.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
+		err = queueService.Dispatch(&tasks.TestTimeout{}, "dispatch task")
+		if err != nil {
+			fmt.Printf("dispatch taks error: %s", err.Error())
+		}
+
+		//fmt.Printf("2.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
+		//err = queueService.Delay(&tasks.TestTimeout{}, "delay task", 10 * time.Second)
+		//if err != nil {
+		//	fmt.Printf("delay taks error: %s", err.Error())
+		//}
+		//
+		//fmt.Printf("3.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
+		//err = queueService.DelayAt(&tasks.TestTimeout{}, "delayAt task", time.Now().Add(5 * time.Second))
+		//if err != nil {
+		//	fmt.Printf("delayAt taks error: %s", err.Error())
+		//}
 	})
 
 	<-idleCloser
