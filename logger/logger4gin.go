@@ -22,6 +22,7 @@ const (
 	TextGinPanic        = "gin.panic.recovery" // gin panic日志标记
 	TextGinRequest      = "gin.request"        // gin request请求日志标记
 	TextGinResponseFail = "gin.response.fail"  // gin 业务层面失败响应日志标记
+	TextGinPreflight    = "gin.preflight"      // gin preflight 御剑options请求类型日志
 )
 
 // GinRecovery zap实现的gin-recovery日志中间件<gin.HandlerFunc的实现>
@@ -123,11 +124,23 @@ func GinLogHttpFail(ctx *gin.Context, err error) {
 }
 
 // GinCors 为gin开启跨域功能<尽量通过nginx反代处理>
-func GinCors(ctx *gin.Context)  {
+func GinCors(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "*")
+	ctx.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,App-Client,x-requested-with,Authorization")
 	ctx.Header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE,PATCH")
 	if ctx.Request.Method == http.MethodOptions {
+		zapLogger.Debug(
+			TextGinPreflight,
+			zap.String("module", TextGinPreflight),
+			zap.String("ua", ctx.GetHeader("User-Agent")),
+			zap.String("method", ctx.Request.Method),
+			zap.String("req_id", GetRequestID(ctx)),
+			zap.String("client_ip", ctx.ClientIP()),
+			zap.String("url_path", ctx.Request.URL.Path),
+			zap.String("url_query", ctx.Request.URL.RawQuery),
+			zap.String("url", ctx.Request.URL.String()),
+		)
 		ctx.AbortWithStatus(http.StatusNoContent)
 		return
 	}
