@@ -122,6 +122,18 @@ func GinLogHttpFail(ctx *gin.Context, err error) {
 	}
 }
 
+// GinCors 为gin开启跨域功能<尽量通过nginx反代处理>
+func GinCors(ctx *gin.Context)  {
+	ctx.Header("Access-Control-Allow-Origin", "*")
+	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,App-Client,x-requested-with,Authorization")
+	ctx.Header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE,PATCH")
+	if ctx.Request.Method == http.MethodOptions {
+		ctx.AbortWithStatus(http.StatusNoContent)
+		return
+	}
+	ctx.Next()
+}
+
 // setRequestID 内部方法设置请求ID
 func setRequestID(ctx *gin.Context) string {
 	requestID := ctx.GetHeader(XRequestID)
