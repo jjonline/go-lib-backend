@@ -16,7 +16,7 @@ import (
 //     // your code // http响应码为200时的逻辑
 //	 ------------------------------------------------------------------------
 //   - 调用方若需处理非200时返回值，如下处理：
-//     if err != nil && errors.Is(err, guzzle.ErrResponseNotStatusOK) {
+//     if err != nil && errors.Is(err, guzzle.ErrResponseNotOK) {
 //       // http响应码非200，此时result也是有值的
 //     }
 var ErrResponseNotOK = errors.New("failed response status code is not equal 200")
