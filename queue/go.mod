@@ -7,3 +7,9 @@ require (
 	github.com/google/uuid v1.2.0
 	go.uber.org/zap v1.18.1
 )
+
+retract v0.7.0
+
+retract v1.0.0
+
+retract v1.0.1

@@ -7,3 +7,11 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	go.uber.org/zap v1.18.1
 )
+
+retract v0.0.1
+
+retract v1.0.0
+
+retract v1.0.1
+
+retract v1.1.0
