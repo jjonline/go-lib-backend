@@ -218,7 +218,7 @@ func (c *Client) DeleteJSON(ctx context.Context, url string, body interface{}, h
 	return c.JSON(ctx, http.MethodDelete, url, toJsonReader(body), head)
 }
 
-// PostForm 行 post 请求，采用 form 格式
+// PostForm 执行 post 请求，采用 form 格式
 //   - url    请求完整URL，自主处理好query
 //   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
 //   - head   请求header部分键值对，无传nil
@@ -226,7 +226,7 @@ func (c *Client) PostForm(ctx context.Context, url string, body interface{}, hea
 	return c.Form(ctx, http.MethodPost, url, toFormReader(body), head)
 }
 
-// PutForm 行 put 请求，采用 form 格式
+// PutForm 执行 put 请求，采用 form 格式
 //   - url    请求完整URL，自主处理好query
 //   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
 //   - head   请求header部分键值对，无传nil
@@ -234,7 +234,7 @@ func (c *Client) PutForm(ctx context.Context, url string, body interface{}, head
 	return c.Form(ctx, http.MethodPut, url, toFormReader(body), head)
 }
 
-// PatchForm 行 patch 请求，采用 form 格式
+// PatchForm 执行 patch 请求，采用 form 格式
 //   - url    请求完整URL，自主处理好query
 //   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
 //   - head   请求header部分键值对，无传nil
@@ -242,7 +242,7 @@ func (c *Client) PatchForm(ctx context.Context, url string, body interface{}, he
 	return c.Form(ctx, http.MethodPatch, url, toFormReader(body), head)
 }
 
-// DeleteForm 行 delete 请求，采用 form 格式
+// DeleteForm 执行 delete 请求，采用 form 格式
 //   - url    请求完整URL，自主处理好query
 //   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
 //   - head   请求header部分键值对，无传nil
