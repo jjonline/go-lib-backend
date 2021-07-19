@@ -30,8 +30,8 @@ func New(logger *zap.Logger) *Crontab {
 }
 
 // Register 注册定时任务类
-// @param spec string 定时规则：`Second | Minute | Hour | Dom (day of month) | Month | Dow (day of week)`
-// @param command contract.Command 任务类需实现命令契约，并且传递结构体实例的指针
+//  - @param spec string 定时规则：`Second | Minute | Hour | Dom (day of month) | Month | Dow (day of week)`
+//  - @param command contract.Command 任务类需实现命令契约，并且传递结构体实例的指针
 func (c *Crontab) Register(spec string, command contract.Command) {
 	c.lock.Lock()
 	defer c.lock.Unlock()

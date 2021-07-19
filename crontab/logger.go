@@ -11,7 +11,7 @@ type cronLog struct {
 	logger *zap.Logger
 }
 
-// Info
+// Info 信息级别日志输出
 func (l cronLog) Info(msg string, keysAndValues ...interface{}) {
 	// record
 	fields := []zapcore.Field{}
@@ -39,7 +39,7 @@ func (l cronLog) Info(msg string, keysAndValues ...interface{}) {
 	}
 }
 
-// Error
+// Error 错误级别日志输出
 func (l cronLog) Error(err error, msg string, keysAndValues ...interface{}) {
 	fields := []zapcore.Field{}
 	fields = append(fields, zap.Error(err))

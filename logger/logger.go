@@ -11,8 +11,8 @@ type Logger struct {
 }
 
 // New 初始化单例logger
-// @param level 日志级别：debug、info、warning 等
-// @param path  文件形式的日志路径 or 标准输出 stderr
+//  @param level 日志级别：debug、info、warning 等
+//  @param path  文件形式的日志路径 or 标准输出 stderr
 func New(level, path string) *Logger {
 	return &Logger{
 		Zap: newZap(level, path),

@@ -9,7 +9,7 @@ import (
 // EsLogger es 日志记录器
 type EsLogger struct{}
 
-// Print es log record
+// Printf Print es log record
 func (l EsLogger) Printf(format string, values ...interface{}) {
 	if zapLogger == nil {
 		return
