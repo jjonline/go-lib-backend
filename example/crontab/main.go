@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/jjonline/go-mod-library/crontab"
-	"github.com/jjonline/go-mod-library/example/crontab/console"
-	"github.com/jjonline/go-mod-library/logger"
+	"github.com/jjonline/go-lib-backend/crontab"
+	"github.com/jjonline/go-lib-backend/example/crontab/console"
+	"github.com/jjonline/go-lib-backend/logger"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"

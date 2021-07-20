@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/jjonline/go-mod-library/defense"
-	"github.com/jjonline/go-mod-library/example/defense/client"
+	"github.com/jjonline/go-lib-backend/defense"
+	"github.com/jjonline/go-lib-backend/example/defense/client"
 	"time"
 )
 

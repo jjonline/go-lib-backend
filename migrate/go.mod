@@ -1,4 +1,4 @@
-module github.com/jjonline/go-mod-library/migrate
+module github.com/jjonline/go-lib-backend/migrate
 
 go 1.16
 

@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/jjonline/go-mod-library/example/queue/client"
-	"github.com/jjonline/go-mod-library/example/queue/tasks"
-	"github.com/jjonline/go-mod-library/queue"
+	"github.com/jjonline/go-lib-backend/example/queue/client"
+	"github.com/jjonline/go-lib-backend/example/queue/tasks"
+	"github.com/jjonline/go-lib-backend/queue"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"

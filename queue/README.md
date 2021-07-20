@@ -24,7 +24,7 @@ go-redis库的v7版本和v8版本存在极其大的差异，为了兼容老项�
 
 ## 三、使用示例
 
-完整使用示例查看 [example](https://github.com/jjonline/go-mod-library/tree/master/queue/example) 目录代码结构
+完整使用示例查看 [example](https://github.com/jjonline/go-lib-backend/tree/master/queue/example) 目录代码结构
 
 ### step1、实现任务类
 

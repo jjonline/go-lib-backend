@@ -1,7 +1,7 @@
 package crontab
 
 import (
-	"github.com/jjonline/go-mod-library/contract"
+	"github.com/jjonline/go-lib-backend/contract"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 	"sync"

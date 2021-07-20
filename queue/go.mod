@@ -1,4 +1,4 @@
-module github.com/jjonline/go-mod-library/queue
+module github.com/jjonline/go-lib-backend/queue
 
 go 1.15
 
@@ -7,9 +7,3 @@ require (
 	github.com/google/uuid v1.2.0
 	go.uber.org/zap v1.18.1
 )
-
-retract v0.7.0
-
-retract v1.0.0
-
-retract v1.0.1

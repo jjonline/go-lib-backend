@@ -15,7 +15,7 @@ step1、项目下新建`logger`目录
 step2、在`logger`目录下初始化go mod
 
 ````
-go mod init github.com/jjolnine/go-mod-library/logger
+go mod init github.com/jjolnine/go-lib-backend/logger
 ````
 >命令执行完毕，将自动在`logger`目录下生成`go.mod`文件
 
@@ -59,5 +59,5 @@ git push origin :refs/tags/logger/v1.0.0
 > 注意：请将`__DIR__`替换为你真实的项目路径
 
 ````
-replace github.com/jjolnine/go-mod-library/image => __DIR__/go-mod-library/image
+replace github.com/jjolnine/go-lib-backend/image => __DIR__/go-lib-backend/image
 ````

@@ -3,7 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"github.com/jjonline/go-mod-library/queue"
+	"github.com/jjonline/go-lib-backend/queue"
 	"time"
 )
 
