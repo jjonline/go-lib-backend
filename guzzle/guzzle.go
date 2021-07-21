@@ -21,6 +21,9 @@ import (
 //     }
 var ErrResponseNotOK = errors.New("failed response status code is not equal 200")
 
+// defaultUserAgent 默认UA头，调用方法时可覆盖
+var defaultUserAgent = "guzzle/go (module github.com/jjonline/go-lib-backend/guzzle)"
+
 // Result 响应封装
 type Result struct {
 	StatusCode    int         // 响应码
@@ -58,7 +61,7 @@ func (c *Client) NewRequest(ctx context.Context, method, url string, body io.Rea
 
 	// set default user-agent | key is case insensitive
 	// <header头的名称是不区分大小写的>
-	req.Header.Set("User-Agent", "guzzle/go (module github.com/jjonline/go-lib-backend/guzzle)")
+	req.Header.Set("User-Agent", defaultUserAgent)
 
 	// 设置请求context
 	req = req.WithContext(ctx)
