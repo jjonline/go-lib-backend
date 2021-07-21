@@ -56,6 +56,10 @@ func (c *Client) NewRequest(ctx context.Context, method, url string, body io.Rea
 		return nil, err
 	}
 
+	// set default user-agent | key is case insensitive
+	// <header头的名称是不区分大小写的>
+	req.Header.Set("User-Agent", "guzzle/go (module github.com/jjonline/go-lib-backend/guzzle)")
+
 	// 设置请求context
 	req = req.WithContext(ctx)
 
