@@ -9,8 +9,12 @@ import (
 	"strings"
 )
 
-// toQueryUrl url和查询字符串拼接成完整URL
-func toQueryUrl(url string, query interface{}) string {
+// ToQueryURL url和查询字符串拼接成完整URL
+//  - url   请求URL，例如：https://www.baidu.com 或 https://www.baidu.com/?wd=11
+//  - query 需要附加到URL里的查询键值对，没有附加的查询字符串时给 nil ，支持的类型如下：
+//    - map[string]string
+//    - map[string][]string <==> url.Values
+func ToQueryURL(url string, query interface{}) string {
 	if query != nil {
 		// url里不存在 ? 符号 直接拼接返回
 		if !strings.Contains(url, "?") {
@@ -23,9 +27,15 @@ func toQueryUrl(url string, query interface{}) string {
 	return url
 }
 
-// toJsonReader 处理参数为JSON类型
-func toJsonReader(param interface{}) io.Reader {
-	switch pv := param.(type) {
+// ToJsonReader 将JSON类型请求的body体参数转换为统一的 io.Reader 类型
+//  - body 拟转换为JSON类型请求body体的参数，支持的类型如下：
+//    - nil
+//    - string 即JSON字面量的字符串
+//    - []byte 即JSON字面量的字节流
+//    - io.Reader 无需转换，远洋返回
+//    - struct等 使用 json.Marshal 转换
+func ToJsonReader(body interface{}) io.Reader {
+	switch pv := body.(type) {
 	case nil:
 		return nil
 	case io.Reader:
@@ -35,12 +45,12 @@ func toJsonReader(param interface{}) io.Reader {
 	case []byte:
 		return bytes.NewReader(pv)
 	default:
-		b, _ := json.Marshal(param)
+		b, _ := json.Marshal(body)
 		return bytes.NewReader(b)
 	}
 }
 
-// toFormReader 处理参数为Form表单类型
+// ToFormReader 处理参数为Form表单类型
 //   - 支持的参数类型如下：
 //   - nil
 //   - io.Reader
@@ -48,7 +58,7 @@ func toJsonReader(param interface{}) io.Reader {
 //   - []byte
 //   - map[string]string
 //   - map[string][]string <==> url.Values
-func toFormReader(param interface{}) io.Reader {
+func ToFormReader(param interface{}) io.Reader {
 	switch pv := param.(type) {
 	case nil:
 		return nil
@@ -70,19 +80,19 @@ func toFormReader(param interface{}) io.Reader {
 //   - map[string]string
 //   - map[string][]string <==> url.Values
 //   - 除了上述不支持的类型，其他类型将会忽略返回空字符串
-func BuildQuery(param interface{}) string {
-	switch pv := param.(type) {
+func BuildQuery(query interface{}) string {
+	switch kv := query.(type) {
 	case map[string]string:
 		values := make(url.Values)
-		for k, v := range pv {
+		for k, v := range kv {
 			values.Add(k, v)
 		}
 		return values.Encode()
 	case map[string][]string:
-		values := url.Values(pv)
+		values := url.Values(kv)
 		return values.Encode()
 	case url.Values:
-		return pv.Encode()
+		return kv.Encode()
 	default:
 		return ""
 	}

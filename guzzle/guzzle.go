@@ -49,9 +49,9 @@ func New(client *http.Client) *Client {
 	}
 }
 
-// NewRequest 新建http请求，链式初始化请求，需链式 Do 方法才实际执行<比较底层的方法>
+// NewRequest 新建http请求，链式初始化请求，需链式 Do 方法才实际执行<可灵活自定义以实现诸如 http.MethodOptions 类型请求>
 //   - method 请求方法：GET、POST等，使用 http.MethodGet http.MethodPost 等常量
-//   - url    请求完整URL
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体 io.Reader 类型
 func (c *Client) NewRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
@@ -99,9 +99,9 @@ func (c *Client) Do(req *http.Request) (result Result, err error) {
 	return result, err
 }
 
-// Request 执行请求：实际执行请求<比较底层的方法>
+// Request 执行请求：实际执行请求<可灵活自定义以实现诸如 http.MethodOptions 类型请求>
 //   - method 请求方法：GET、POST等，使用 http.MethodGet http.MethodPost 等常量
-//   - url    请求完整URL
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体 io.Reader 类型
 //   - head   请求header部分
 func (c *Client) Request(ctx context.Context, method, url string, body io.Reader, head map[string]string) (Result, error) {
@@ -116,11 +116,11 @@ func (c *Client) Request(ctx context.Context, method, url string, body io.Reader
 }
 
 // Get 执行 get 请求
-//   - url    请求完整URL
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - query  GET请求URl中的Query键值对，支持类型：map[string]string、map[string][]string<等价于 url.Values>，无则给 nil
 //   - head   请求header部分键值对，无则给 nil
 func (c *Client) Get(ctx context.Context, url string, query interface{}, head map[string]string) (Result, error) {
-	req, err := c.NewRequest(ctx, http.MethodGet, toQueryUrl(url, query), nil)
+	req, err := c.NewRequest(ctx, http.MethodGet, ToQueryURL(url, query), nil)
 	if err != nil {
 		return Result{}, err
 	}
@@ -131,11 +131,11 @@ func (c *Client) Get(ctx context.Context, url string, query interface{}, head ma
 }
 
 // Delete 执行 delete 请求
-//   - url    请求完整URL
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - query  GET请求URl中的Query键值对，支持类型：map[string]string、map[string][]string<等价于 url.Values>，无则给 nil
 //   - head   请求header部分键值对，无则给 nil
 func (c *Client) Delete(ctx context.Context, url string, query interface{}, head map[string]string) (Result, error) {
-	req, err := c.NewRequest(ctx, http.MethodDelete, toQueryUrl(url, query), nil)
+	req, err := c.NewRequest(ctx, http.MethodDelete, ToQueryURL(url, query), nil)
 	if err != nil {
 		return Result{}, err
 	}
@@ -149,7 +149,7 @@ func (c *Client) Delete(ctx context.Context, url string, query interface{}, head
 
 // JSON 执行 post/put/patch/delete 请求，采用 json 格式<比较底层的方法>
 //   - method 请求方法：GET、POST等，使用 http.MethodGet http.MethodPost 等常量
-//   - url    请求完整URL
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体 io.Reader 类型
 //   - head   请求header部分键值对
 func (c *Client) JSON(ctx context.Context, method, url string, body io.Reader, head map[string]string) (Result, error) {
@@ -168,7 +168,7 @@ func (c *Client) JSON(ctx context.Context, method, url string, body io.Reader, h
 
 // Form 执行 post 请求，采用 form 表单格式<比较底层的方法>
 //   - method 请求方法：GET、POST等，使用 http.MethodGet http.MethodPost 等常量
-//   - url    请求完整URL
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体 io.Reader 类型
 //   - head   请求header部分键值对
 func (c *Client) Form(ctx context.Context, method, url string, body io.Reader, head map[string]string) (Result, error) {
@@ -186,65 +186,65 @@ func (c *Client) Form(ctx context.Context, method, url string, body io.Reader, h
 }
 
 // PostJSON 执行 post 请求，采用 json 格式
-//   - url    请求完整URL，自主处理好query
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) PostJSON(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.JSON(ctx, http.MethodPost, url, toJsonReader(body), head)
+	return c.JSON(ctx, http.MethodPost, url, ToJsonReader(body), head)
 }
 
 // PutJSON 执行 put 请求，采用 json 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组、结构体等；请传 guzzle.ToJsonReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) PutJSON(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.JSON(ctx, http.MethodPut, url, toJsonReader(body), head)
+	return c.JSON(ctx, http.MethodPut, url, ToJsonReader(body), head)
 }
 
 // PatchJSON 执行 patch 请求，采用 json 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组、结构体等；请传 guzzle.ToJsonReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) PatchJSON(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.JSON(ctx, http.MethodPatch, url, toJsonReader(body), head)
+	return c.JSON(ctx, http.MethodPatch, url, ToJsonReader(body), head)
 }
 
 // DeleteJSON 执行 delete 请求，采用 json 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组、结构体等；请传 guzzle.ToJsonReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) DeleteJSON(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.JSON(ctx, http.MethodDelete, url, toJsonReader(body), head)
+	return c.JSON(ctx, http.MethodDelete, url, ToJsonReader(body), head)
 }
 
 // PostForm 执行 post 请求，采用 form 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) PostForm(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.Form(ctx, http.MethodPost, url, toFormReader(body), head)
+	return c.Form(ctx, http.MethodPost, url, ToFormReader(body), head)
 }
 
 // PutForm 执行 put 请求，采用 form 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) PutForm(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.Form(ctx, http.MethodPut, url, toFormReader(body), head)
+	return c.Form(ctx, http.MethodPut, url, ToFormReader(body), head)
 }
 
 // PatchForm 执行 patch 请求，采用 form 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) PatchForm(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.Form(ctx, http.MethodPatch, url, toFormReader(body), head)
+	return c.Form(ctx, http.MethodPatch, url, ToFormReader(body), head)
 }
 
 // DeleteForm 执行 delete 请求，采用 form 格式
-//   - url    请求完整URL，自主处理好query
-//   - body   请求body体，支持：字符串、字节数组、结构体等，最终会转换为 io.Reader 类型
+//   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) DeleteForm(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
-	return c.Form(ctx, http.MethodDelete, url, toFormReader(body), head)
+	return c.Form(ctx, http.MethodDelete, url, ToFormReader(body), head)
 }
