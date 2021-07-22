@@ -117,14 +117,10 @@ func (c *Client) Request(ctx context.Context, method, url string, body io.Reader
 
 // Get 执行 get 请求
 //   - url    请求完整URL
-//   - query  GET请求URl中的Query键值对，支持类型：map[string]string、map[string][]string<等价于 url.Values>
-//   - head   请求header部分键值对
-//   - 注意 url 与 query是完全分开传参，没有查询参数query给 nil 即可
+//   - query  GET请求URl中的Query键值对，支持类型：map[string]string、map[string][]string<等价于 url.Values>，无则给 nil
+//   - head   请求header部分键值对，无则给 nil
 func (c *Client) Get(ctx context.Context, url string, query interface{}, head map[string]string) (Result, error) {
-	if query != nil {
-		url += "?" + BuildQuery(query)
-	}
-	req, err := c.NewRequest(ctx, http.MethodGet, url, nil)
+	req, err := c.NewRequest(ctx, http.MethodGet, toQueryUrl(url, query), nil)
 	if err != nil {
 		return Result{}, err
 	}
@@ -136,14 +132,10 @@ func (c *Client) Get(ctx context.Context, url string, query interface{}, head ma
 
 // Delete 执行 delete 请求
 //   - url    请求完整URL
-//   - query  GET请求URl中的Query键值对，支持类型：map[string]string、map[string][]string<等价于 url.Values>
-//   - head   请求header部分键值对
-//   - 注意 url 与 query是完全分开传参，没有查询参数query给 nil 即可
-func (c *Client) Delete(ctx context.Context, url string, param interface{}, head map[string]string) (Result, error) {
-	if param != nil {
-		url += "?" + BuildQuery(param)
-	}
-	req, err := c.NewRequest(ctx, http.MethodDelete, url, nil)
+//   - query  GET请求URl中的Query键值对，支持类型：map[string]string、map[string][]string<等价于 url.Values>，无则给 nil
+//   - head   请求header部分键值对，无则给 nil
+func (c *Client) Delete(ctx context.Context, url string, query interface{}, head map[string]string) (Result, error) {
+	req, err := c.NewRequest(ctx, http.MethodDelete, toQueryUrl(url, query), nil)
 	if err != nil {
 		return Result{}, err
 	}

@@ -9,6 +9,20 @@ import (
 	"strings"
 )
 
+// toQueryUrl url和查询字符串拼接成完整URL
+func toQueryUrl(url string, query interface{}) string {
+	if query != nil {
+		// url里不存在 ? 符号 直接拼接返回
+		if !strings.Contains(url, "?") {
+			return url + "?" + BuildQuery(query)
+		}
+
+		// url里存在 ? 符号，去除右侧 & 符号后，再使用&符拼接返回
+		return strings.TrimRight(url, "&") + "&" + BuildQuery(query)
+	}
+	return url
+}
+
 // toJsonReader 处理参数为JSON类型
 func toJsonReader(param interface{}) io.Reader {
 	switch pv := param.(type) {
