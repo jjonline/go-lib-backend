@@ -21,8 +21,8 @@ var (
 
 // dingResponse 钉钉响应结构
 type dingResponse struct {
-	ErrorCode int    `json:"errcode"`
-	ErrMsg    string `json:"errmsg"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }
 
 // Ding 钉钉机器人消息发送客户端
@@ -89,7 +89,7 @@ func (d *Ding) send(message interface{}) error {
 	if err != nil {
 		return err
 	}
-	if body.ErrorCode != 0 {
+	if body.ErrCode != 0 {
 		return fmt.Errorf("%s", body.ErrMsg)
 	}
 
