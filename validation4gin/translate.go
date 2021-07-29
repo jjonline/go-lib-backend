@@ -43,7 +43,11 @@ func Translate(err error, message Message, fieldMap FieldMap) MessageBag {
 	case *json.UnmarshalTypeError:
 		return translateUnmarshalErr(err.(*json.UnmarshalTypeError), message, fieldMap)
 	default:
-		return MessageBag{}
+		// 其他类型错误：例如解析PostForm出错，如果有*通配则返回*文案否则返回默认noCover
+		if _, ok := message["*"]; ok {
+			return MessageBag{toPriorityMessage("", "*", message, fieldMap)}
+		}
+		return MessageBag{ValidationNoCoverMessage}
 	}
 }
 

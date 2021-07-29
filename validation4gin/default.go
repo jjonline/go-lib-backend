@@ -9,4 +9,6 @@ var (
 	// ValidationDefaultMessage 未定义rule规则下文案时默认文案
 	//  当未定义rule规则对应的消息体时的默认消息体
 	ValidationDefaultMessage = "字段%s规则%s不通过"
+	// ValidationNoCoverMessage 未覆盖到的错误类型默认文案<自定义则通过 * 通配>
+	ValidationNoCoverMessage = "参数错误"
 )
