@@ -37,6 +37,7 @@ func Translate(err error, message Message, fieldMap FieldMap) MessageBag {
 		return translateValidErr(err.(validator.ValidationErrors), message, fieldMap)
 	case *strconv.NumError:
 		// 一般是转换为数值类型时发生错误：无法转换 or 超过数值类型的长度
+		// https://github.com/gin-gonic/gin/issues/2334
 		// strconv 库返回的错误本身无法获取到是那个字段转换失败的
 		return MessageBag{toPriorityMessage("", KindKey, message, fieldMap)}
 	case *json.UnmarshalTypeError:
