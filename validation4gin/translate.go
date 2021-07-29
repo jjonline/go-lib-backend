@@ -83,6 +83,11 @@ func toPriorityMessage(field, rule string, message Message, fieldMap FieldMap) s
 			// -step3 rule
 			if val, ok = message[rule]; ok {
 				result = val
+			} else {
+				// -step4 *
+				if val, ok = message["*"]; ok {
+					result = val
+				}
 			}
 		}
 	}

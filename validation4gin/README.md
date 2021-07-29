@@ -71,6 +71,7 @@ func ValidRule(ctx *gin.Context) {
    - `FieldName.*` 表示字段下通配，该字段下未定义的规则被触发时通配使用(优先级2)；
    - `-rule-` 表示全字段通配，某个字段未定义任何rule规则下则是哟好难过全字段通配规则文案(优先级3)；
    - `kind` `kind`是一个特定的规则（即 `validation4gin.KindKey` 常量），表示参数绑定时传参类型与绑定的结构不符或越界时使用该文案(优先级3)；
+   - `*` 通配所有未指定规则(优先级4)；
  - 值 为自定义文案，文案中可使用 `:`开头的字段名作为变量，即`validation4gin.FieldMap`的键名并最终把变量替换掉；
 
 `validation4gin.FieldMap` 类型
