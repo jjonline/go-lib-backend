@@ -19,7 +19,7 @@ func ValidRule(ctx *gin.Context) {
  * 当参数绑定失败或表单检查不通过时返回的`error`信息有多种类型：绑定失败相关、表单检查相关 等
  * 直接`err.Error()`转换的字符串对非编程人员而言识读性差
 
-本库尝试按一定规则来解析解析这个err并定制化返回文案
+本库尝试按一定规则来解析这个err并定制化返回文案
 
 > 因 gin 框架底层默认使用的 `go-playground/validator` 这个表单检查库
 > 实质上本库是在尝试翻译 `go-playground/validator` 的返回值而不是使用官方库既重又不够个性化的i18n翻译。
@@ -49,7 +49,7 @@ func ValidRule(ctx *gin.Context) {
         "ID.max"       :  ":ID不得大于100",
         "Name.required":  "用户:Name必填",
         "Name.max"     :  "用户:Name长度最大支持255个字符",
-        "Name.kind"    :  "用户:Name参数类型错误",
+        "kind"         :  "用户:Name参数类型错误",
     }
     // 定义表单相关字段对应值
     // 如果绑定的到struct则是结构体的字段名FieldName（而不是传参form表单字段名）
