@@ -74,7 +74,7 @@ func ValidRule(ctx *gin.Context) {
    - `*` 通配所有未指定规则(优先级4)；
  - 值 为自定义文案，文案中可使用 `:`开头的字段名作为变量，即`validation4gin.FieldMap`的键名并最终把变量替换掉；
 
-> 注意：因参数绑定`error`无法追溯到是哪个字段绑定失败，`FieldName.kind`可能无法生效，建议`kind`可能无法生效；原因见此：[https://github.com/gin-gonic/gin/issues/2334](https://github.com/gin-gonic/gin/issues/2334)
+> 注意：因参数绑定`error`无法追溯到是哪个字段绑定失败，`FieldName.kind`可能无法生效，建议设定`kind`规则；原因见此：[https://github.com/gin-gonic/gin/issues/2334](https://github.com/gin-gonic/gin/issues/2334)
 
 
 `validation4gin.FieldMap` 类型
