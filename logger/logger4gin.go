@@ -16,13 +16,14 @@ import (
 
 // XRequestID 为每个请求分配的请求编号key和名称
 // 1、优先从header头里读由nginx维护的并且转发过来的x-request-id
-// 2、如果读取不到则使用当前纳秒时间戳字符串
+// 2、如果读取不到则使用当前纳秒时间戳字符串加前缀字符串
 const (
 	XRequestID          = "x-request-id"       // 请求ID名称
+	XRequestIDPrefix    = "R"                  // 当使用纳秒时间戳作为请求ID时拼接的前缀字符串
 	TextGinPanic        = "gin.panic.recovery" // gin panic日志标记
 	TextGinRequest      = "gin.request"        // gin request请求日志标记
 	TextGinResponseFail = "gin.response.fail"  // gin 业务层面失败响应日志标记
-	TextGinPreflight    = "gin.preflight"      // gin preflight 御剑options请求类型日志
+	TextGinPreflight    = "gin.preflight"      // gin preflight 预检options请求类型日志
 )
 
 // GinRecovery zap实现的gin-recovery日志中间件<gin.HandlerFunc的实现>
@@ -151,7 +152,7 @@ func GinCors(ctx *gin.Context) {
 func setRequestID(ctx *gin.Context) string {
 	requestID := ctx.GetHeader(XRequestID)
 	if requestID == "" {
-		requestID = strconv.FormatInt(time.Now().UnixNano(), 10)
+		requestID = XRequestIDPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	}
 	ctx.Set(XRequestID, requestID)
 	return requestID
