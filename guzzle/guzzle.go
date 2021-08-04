@@ -61,7 +61,9 @@ func (c *Client) NewRequest(ctx context.Context, method, url string, body io.Rea
 
 	// set default user-agent | key is case insensitive
 	// <header头的名称是不区分大小写的>
-	req.Header.Set("User-Agent", defaultUserAgent)
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", defaultUserAgent)
+	}
 
 	// 设置请求context
 	req = req.WithContext(ctx)
