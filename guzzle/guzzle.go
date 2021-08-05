@@ -59,12 +59,6 @@ func (c *Client) NewRequest(ctx context.Context, method, url string, body io.Rea
 		return nil, err
 	}
 
-	// set default user-agent | key is case insensitive
-	// <header头的名称是不区分大小写的>
-	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", defaultUserAgent)
-	}
-
 	// 设置请求context
 	req = req.WithContext(ctx)
 
@@ -73,6 +67,12 @@ func (c *Client) NewRequest(ctx context.Context, method, url string, body io.Rea
 
 // Do 处理请求：用于链式调用
 func (c *Client) Do(req *http.Request) (result Result, err error) {
+	// set default user-agent if you do not set
+	// header key is case-insensitive
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", defaultUserAgent)
+	}
+
 	res, err := c.client.Do(req)
 	if err != nil {
 		return result, err
