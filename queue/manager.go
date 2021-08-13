@@ -212,7 +212,7 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		// 当前任务作为延迟任务再次投递
 		// warning 当前正在执行的可能执行成功这样会导致一条任务多次被成功执行，需要任务类自主实现业务逻辑幂等
 		if payload, err := json.Marshal(job.Payload()); err == nil {
-			_ = job.Queue().Later(job.GetName(), DefaultMaxExecuteDuration, payload)
+			_ = job.Queue().Later(job.GetName(), time.Duration(job.Payload().RetryInterval)*time.Second, payload)
 		}
 
 		// 触发记录可能失败日志的记录，便于回溯
@@ -293,8 +293,8 @@ func (m *manager) looperJitter() time.Duration {
 // 1、如果超限则方法体内部清理任务并返回true，表示该job需要停止执行
 // 2、如果未超限则返回false
 func (m *manager) markJobAsFailedIfAlreadyExceedsMaxAttempts(job JobIFace) (needSop bool) {
-	// step1、执行时长检查，持续执行超过最大执行时长时记录日志
-	if time.Now().Sub(job.PopTime()) >= DefaultMaxExecuteDuration {
+	// step1、执行时长检查，持续执行超过设置的超时时长则记录日志
+	if time.Now().Sub(job.PopTime()) >= job.Timeout() {
 		m.logger.Warn(
 			textJobTooLong,
 			zap.String("queue", job.GetName()),

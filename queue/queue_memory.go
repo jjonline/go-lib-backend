@@ -138,7 +138,7 @@ func (m *memoryQueue) Pop(queue string) (job JobIFace, exist bool) {
 	payload := node.Payload // value copy
 
 	// 设置任务当前尝试次数和超时时刻等
-	node.TimeAt = now.Add(DefaultMaxExecuteDuration).Unix()
+	node.TimeAt = now.Add(time.Duration(node.Payload.Timeout) * time.Second).Unix()
 	node.Payload.Attempts += 1
 	if node.Payload.PopTime <= 0 {
 		node.Payload.PopTime = now.Unix()

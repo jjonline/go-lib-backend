@@ -35,7 +35,7 @@ var (
 	textJobProcessing = "queue.job.processing"   // job开始执行标记文案
 	textJobProcessed  = "queue.job.processed"    // job已执行成功标记文案
 	textJobFailed     = "queue.job.failed"       // job已执行失败标记文案<任务类返回了error>
-	textJobTooLong    = "queue.execute.too.long" // job多次尝试执行检查距离上次执行时间差已经大于 DefaultMaxExecuteDuration
+	textJobTooLong    = "queue.execute.too.long" // job多次尝试执行检查距离上次执行时间差已经大于设置的最大执行时长
 	textJobFailedLog  = "queue.failed.log"       // job执行失败标记文案
 )
 
