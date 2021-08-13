@@ -318,6 +318,10 @@ func (m *manager) markJobAsFailedIfAlreadyExceedsMaxAttempts(job JobIFace) (need
 // 1、检查job执行是否超过基准时间以记录日志
 // 2、检查job执行尝试次数
 func (m *manager) markJobAsFailedIfWillExceedMaxAttempts(job JobIFace, err error) {
+	if job.IsDeleted() {
+		return
+	}
+
 	// step1、执行时长检查：超时记录超时日志
 	if time.Now().Sub(job.PopTime()) >= job.Timeout() {
 		m.logger.Warn(
