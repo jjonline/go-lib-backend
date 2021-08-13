@@ -1,9 +1,10 @@
+package queue
+
 /*
  * 定义队列契约
  * @Time   : 2021/1/8 上午9:42
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import (
 	"context"
@@ -102,31 +103,32 @@ type RawBody struct {
 	ID      string // 队列内部唯一标识符ID
 }
 
-// Int 任务数据转int
+// Int 任务参数数据转int
 func (rawBody *RawBody) Int() int {
 	i, _ := strconv.Atoi(string(rawBody.payload))
 	return i
 }
 
-// String 任务数据转string
+// String 任务参数转string
 func (rawBody *RawBody) String() string {
 	return string(rawBody.payload)
 }
 
-// Bytes 任务数据转[]byte
+// Bytes 任务参数转[]byte
 func (rawBody *RawBody) Bytes() []byte {
 	return rawBody.payload
 }
 
-// Int64 任务数据转int64
+// Int64 任务参数转int64
 func (rawBody *RawBody) Int64() int64 {
 	i64, _ := strconv.ParseInt(string(rawBody.payload), 10, 64)
 	return i64
 }
 
-// Unmarshal 任务数据Unmarshal为投递调度任务时的结构类型
-// result 具体类型的指针引用变量，转换成功将自动填充
-// 转换成功填充result返回nil，转换失败时返回error
+// Unmarshal 任务参数Unmarshal为投递调度任务时的结构类型
+//  - 传参为基础类型的不要使用该方法转换而是使用 Int String Bytes 等method
+//  - result 具体类型的指针引用变量，转换成功将自动填充
+//  - 转换成功填充result返回nil，转换失败时返回error
 func (rawBody *RawBody) Unmarshal(result interface{}) error {
 	return json.Unmarshal(rawBody.payload, result)
 }

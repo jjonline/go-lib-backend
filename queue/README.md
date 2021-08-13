@@ -4,25 +4,13 @@
 
 Queue队列为`生产 -> 消费`模型的简单实现，即：`producer -> consumer(worker)`，一般分为生产端和消费端。
 
-当前已实现开发测试用`memory`方案和可用于生产的`redis`方案。
+当前已实现开发测试用`memory`驱动和可用于生产的`redis`类型驱动。
+
+**⚠️ `memory`类型驱动仅可用于开发调试**
 
 > **由于多个独立进程间内存隔离，以及进程退出后进程所属内存销毁的原因，`memory`方案在进程退出后未消费的队列数据会丢失，故而仅能用于开发调试环境，且生产端和消费端只能在同一进程。**
 
-## 二、版本差异说明
-
-## v0.7.x系列
-
-`v0.7.x`系列底层使用了 [redis-v7](https://github.com/go-redis/redis/releases/tag/v7.4.0)
-
-go-redis库的v7版本和v8版本存在极其大的差异，为了兼容老项目提供`v0.7.x`系列版本。
-
-**请注意：`v0.7.x`系列任务类不支持超时控制。**
-
-## 非v0.7.x系列
-
-`v0.7.x`版本号之外均使用go-redis v8，并且任务类支持`context.Context`上下文控制和超时控制。
-
-## 三、使用示例
+## 二、使用示例
 
 完整使用示例查看 [example](https://github.com/jjonline/go-lib-backend/tree/master/queue/example) 目录代码结构
 
@@ -49,8 +37,8 @@ func (t TestTask) Name() string {
     return "test_task"
 }
 
-func (t TestTask) Execute(job *queue.RawBody) error {
-    // 队列实际执行的入口方法
+func (t TestTask) Execute(ctx context.Context, job *queue.RawBody) error {
+    // 队列实际执行的入口方法，请注意处理 context.Context 内部用于超时控制 
     fmt.Println(job.ID)
     return nil
 }
@@ -131,6 +119,8 @@ service := queue.New(
     zapLogger, // zap日志实例，用于记录日志
 )
 
+// 单个任务类：若生产者端和消费者端分处不同进程，生产者端任务类也需要执行注册
+
 // 投递一条普通队列任务
 service.Dispatch(&tasks.TestTask{}, "job执行时的参数")
 
@@ -165,11 +155,9 @@ service.Delay(&tasks.TestTask{}, "job执行时的参数", time.Duration类型的
 
 ### 3.3、超时
 
-`v0.7.x`系列版本并不支持超时设置，只有一个900秒执行的提示 
-
 > 因goroutine无法从外部kill掉，超时控制通过`context.Context`上下文实现，需任务类自主实现超时控制的退出机制！
 
-默认任务类设置最大超时时长为`900秒`，可通过任务类Timeout方法自定义超时时间。
+任务类通过嵌入`DefaultTaskSetting`则设置的最大超时时长为`900秒`，可通过任务类Timeout方法自定义超时时间。
 
 ### 3.4、约定
 

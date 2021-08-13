@@ -272,7 +272,6 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	case <-ctx.Done():
 		// timeout to exit worker goroutine, but job may continue executed
 		m.markJobAsFailedIfWillExceedMaxAttempts(job, ctx.Err())
-		fmt.Println("timeout")
 		return
 	}
 }
