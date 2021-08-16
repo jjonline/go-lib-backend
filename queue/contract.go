@@ -14,11 +14,12 @@ import (
 	"time"
 )
 
+// 定义常量
 const (
-	// shutdownPollIntervalMax 优雅关闭进程最大重复尝试间隔时长
-	shutdownPollIntervalMax = 500 * time.Millisecond
-	// DefaultMaxExecuteDuration job任务执行时长极限预警值：15分钟
-	DefaultMaxExecuteDuration = 900 * time.Second
+	shutdownPollIntervalMax   = 500 * time.Millisecond // 优雅关闭进程最大重复尝试间隔时长
+	DefaultMaxExecuteDuration = 900 * time.Second      // job任务执行时长极限预警值：15分钟
+	DefaultMaxTries           = 1                      // 默认最大重试次数：1次<即不重试>
+	DefaultRetryInterval      = 60                     // 默认下次任务重试间隔：1分钟<即可多次执行任务失败后下一次尝试是在60秒后>
 )
 
 var (
@@ -178,12 +179,12 @@ type DefaultTaskSetting struct{}
 
 // MaxTries 默认最大尝试次数1，即投递的任务仅执行1次
 func (task *DefaultTaskSetting) MaxTries() int64 {
-	return 1
+	return DefaultMaxTries
 }
 
 // RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
 func (task *DefaultTaskSetting) RetryInterval() int64 {
-	return 0
+	return DefaultRetryInterval
 }
 
 // Timeout 任务最大执行超时时长：默认超时时长为900秒
@@ -196,12 +197,12 @@ type DefaultTaskSettingWithoutTimeout struct{}
 
 // MaxTries 默认最大尝试次数1，即投递的任务仅执行1次
 func (task *DefaultTaskSettingWithoutTimeout) MaxTries() int64 {
-	return 1
+	return DefaultMaxTries
 }
 
 // RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
 func (task *DefaultTaskSettingWithoutTimeout) RetryInterval() int64 {
-	return 0
+	return DefaultRetryInterval
 }
 
 // jobProperty 公共的job实现类内部属性
