@@ -166,3 +166,7 @@ service.Delay(&tasks.TestTask{}, "job执行时的参数", time.Duration类型的
 3. 任务执行成功：`Execute(job *RawBody) error`返回`nil`
 4. 任务执行失败：`Execute(job *RawBody) error`返回`error`
 5. 任务执行异常：`Execute(job *RawBody) error`发生了`panic`
+
+* 提供有默认设置最大超时时间、最大重试次数、重试间隔的可嵌入结构体 `queue.DefaultTaskSetting`
+* 提供有默认设置最大重试次数、重试间隔而不设置超时时间可自定义超时的可嵌入结构体 `queue.DefaultTaskSettingWithoutTimeout`
+* 当然你也可以完全自定义任务类而不嵌入任何默认构件结构体
