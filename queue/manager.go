@@ -22,6 +22,9 @@ import (
 // 3、队列相关管控功能实现：启动、优雅停止、协程并发调度等
 // *************************************************
 
+// jitterBase looper最小为450毫秒间隔，最大为1000毫秒间隔
+var	jitterBase = 450 * time.Millisecond
+
 type atomicBool int32
 
 func (b *atomicBool) isSet() bool { return atomic.LoadInt32((*int32)(b)) != 0 }
@@ -278,12 +281,9 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 
 // looperJitter looper循环器间隔抖动
 func (m *manager) looperJitter() time.Duration {
-	// looper最小为450毫秒间隔，最大为1000毫秒间隔
-	base := 450 * time.Millisecond
-
-	m.jitter = m.jitter + time.Duration(rand.Intn(int(base/3)))
+	m.jitter = m.jitter + time.Duration(rand.Intn(int(jitterBase/3)))
 	if m.jitter > 1*time.Second {
-		m.jitter = base
+		m.jitter = jitterBase
 	}
 
 	return m.jitter
