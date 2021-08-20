@@ -32,14 +32,10 @@ func (r *queueBasic) delayedName(queue string) string {
 // @task	  队列任务类实例
 // @taskParam 队列job参数
 // @ID	      队列job编号ID（延迟队列）
-func (r *queueBasic) marshalPayload(task TaskIFace, taskParam interface{}, ID string) ([]byte, error) {
-	if ID == "" {
-		// 补充一个尽量唯一的编号ID
-		ID = FakeUniqueID()
-	}
+func (r *queueBasic) marshalPayload(task TaskIFace, taskParam interface{}) ([]byte, error) {
 	return json.Marshal(Payload{
 		Name:          task.Name(),
-		ID:            ID,
+		ID:            FakeUniqueID(),
 		MaxTries:      task.MaxTries(),
 		RetryInterval: task.RetryInterval(),
 		Attempts:      0,

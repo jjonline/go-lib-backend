@@ -98,6 +98,7 @@ type JobIFace interface {
 // region 定义任务传参实体RawBody
 
 // RawBody 队列execute执行时传递给执行方法的参数Raw结构：job任务参数的包装器
+//  - ID 内部标记队列任务的唯一ID，使用UUID生成
 type RawBody struct {
 	queue   string // 队列名
 	payload []byte // 调度队列塞入的数据体
@@ -105,22 +106,26 @@ type RawBody struct {
 }
 
 // Int 任务参数数据转int
+//  如果投递的任务参数为int型标量参数，使用该方法获取传参
 func (rawBody *RawBody) Int() int {
 	i, _ := strconv.Atoi(string(rawBody.payload))
 	return i
 }
 
 // String 任务参数转string
+//  如果投递的任务参数为string型标量参数，使用该方法获取传参
 func (rawBody *RawBody) String() string {
 	return string(rawBody.payload)
 }
 
 // Bytes 任务参数转[]byte
+//  如果投递的任务参数为[]byte型标量参数，使用该方法获取传参
 func (rawBody *RawBody) Bytes() []byte {
 	return rawBody.payload
 }
 
 // Int64 任务参数转int64
+//  如果投递的任务参数为int64型标量参数，使用该方法获取传参
 func (rawBody *RawBody) Int64() int64 {
 	i64, _ := strconv.ParseInt(string(rawBody.payload), 10, 64)
 	return i64
@@ -146,9 +151,9 @@ type Payload struct {
 	RetryInterval int64  `json:"RetryInterval"` // 当任务最大允许尝试次数大于0时，下次尝试之前的间隔时长，单位：秒
 	Attempts      int64  `json:"Attempts"`      // 任务已被尝试执行的的次数
 	Payload       []byte `json:"Payload"`       // 任务参数比特字面量，可decode成具体job被execute时的类型
-	PopTime       int64  `json:"PopTime"`       // 任务首次被取出执行的时间戳
+	PopTime       int64  `json:"PopTime"`       // 任务首次被取出执行的时间戳，取出的时候才去设置
 	Timeout       int64  `json:"Timeout"`       // 任务最大执行超时时长，单位：秒
-	TimeoutAt     int64  `json:"TimeoutAt"`     // 任务超时时刻时间戳
+	TimeoutAt     int64  `json:"TimeoutAt"`     // 任务超时时刻时间戳，被执行时刻才会去设置
 }
 
 // RawBody PayLoad结构体获取载体实体

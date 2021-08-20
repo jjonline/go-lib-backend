@@ -109,7 +109,7 @@ func (q *Queue) ShutDown(ctx context.Context) error {
 
 // Dispatch 投递一个队列Job任务
 func (q *Queue) Dispatch(task TaskIFace, payload interface{}) error {
-	queuePayload, err := q.marshalPayload(task, payload, "")
+	queuePayload, err := q.marshalPayload(task, payload)
 	if nil != err {
 		return fmt.Errorf("queue %s job param marshal failed: %s", task.Name(), err.Error())
 	}
@@ -118,12 +118,8 @@ func (q *Queue) Dispatch(task TaskIFace, payload interface{}) error {
 }
 
 // DelayAt 投递一个延迟队列Job任务
-func (q *Queue) DelayAt(task TaskIFace, payload interface{}, delay time.Time, ID ...string) error {
-	perhapsId := ""
-	if len(ID) > 0 {
-		perhapsId = ID[0]
-	}
-	queuePayload, err := q.marshalPayload(task, payload, perhapsId)
+func (q *Queue) DelayAt(task TaskIFace, payload interface{}, delay time.Time) error {
+	queuePayload, err := q.marshalPayload(task, payload)
 	if nil != err {
 		return fmt.Errorf("queue %s job param marshal failed: %s", task.Name(), err.Error())
 	}
@@ -132,12 +128,8 @@ func (q *Queue) DelayAt(task TaskIFace, payload interface{}, delay time.Time, ID
 }
 
 // Delay 投递一个延迟队列Job任务
-func (q *Queue) Delay(task TaskIFace, payload interface{}, duration time.Duration, ID ...string) error {
-	perhapsId := ""
-	if len(ID) > 0 {
-		perhapsId = ID[0]
-	}
-	queuePayload, err := q.marshalPayload(task, payload, perhapsId)
+func (q *Queue) Delay(task TaskIFace, payload interface{}, duration time.Duration) error {
+	queuePayload, err := q.marshalPayload(task, payload)
 	if nil != err {
 		return fmt.Errorf("queue %s job param marshal failed: %s", task.Name(), err.Error())
 	}
@@ -160,13 +152,13 @@ func (q *Queue) DispatchByName(name string, payload interface{}) error {
 // DelayAtByName 按任务name投递一个延迟队列Job任务
 // 投递一个异步延迟执行的任务
 // 重要提示:使用该方法则意味着投递任务之前必须bootstrap任务类，新项目请尽量使用DelayAt方法
-func (q *Queue) DelayAtByName(name string, payload interface{}, delay time.Time, ID ...string) error {
+func (q *Queue) DelayAtByName(name string, payload interface{}, delay time.Time) error {
 	task, exist := q.manager.tasks[name]
 	if !exist {
 		return fmt.Errorf("queue %s do not bootstrap", name)
 	}
 
-	return q.DelayAt(task, payload, delay, ID...)
+	return q.DelayAt(task, payload, delay)
 }
 
 // Size 获取指定队列当前长度
