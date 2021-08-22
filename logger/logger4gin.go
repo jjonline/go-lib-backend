@@ -128,7 +128,7 @@ func GinLogHttpFail(ctx *gin.Context, err error) {
 func GinCors(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "*")
 	ctx.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,App-Client,x-requested-with,Authorization")
+	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,X-App-Client,X-App-Id,X-Requested-With,Authorization")
 	ctx.Header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE,PATCH")
 	if ctx.Request.Method == http.MethodOptions {
 		zapLogger.Debug(
