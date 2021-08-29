@@ -154,7 +154,7 @@ func GinCors(ctx *gin.Context) {
 //  若为了全面记录路由注册日志，调用 gin.SetMode 方法代码可写在路由注册之后，但就会出现gin的开发模式提示信息
 func GinPrintInitRoute(httpMethod, absolutePath, handlerName string, nuHandlers int) {
 	zapLogger.Info(
-		TextGinResponseFail,
+		TextGinRouteInit,
 		zap.String("module", TextGinRouteInit),
 		zap.String("method", httpMethod),
 		zap.String("path", absolutePath),
