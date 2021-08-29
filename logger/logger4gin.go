@@ -150,9 +150,10 @@ func GinCors(ctx *gin.Context) {
 }
 
 // GinPrintInitRoute 为gin自定义注册路由日志输出
-//  因gin路由注册信息输出只有dev模式才有，此处日志采用debug级别
+//  注意：因gin路由注册信息输出只有dev模式才有
+//  若为了全面记录路由注册日志，调用 gin.SetMode 方法代码可写在路由注册之后，但就会出现gin的开发模式提示信息
 func GinPrintInitRoute(httpMethod, absolutePath, handlerName string, nuHandlers int) {
-	zapLogger.Debug(
+	zapLogger.Info(
 		TextGinResponseFail,
 		zap.String("module", TextGinRouteInit),
 		zap.String("method", httpMethod),
