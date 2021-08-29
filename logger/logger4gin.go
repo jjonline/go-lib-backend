@@ -20,6 +20,7 @@ import (
 const (
 	XRequestID          = "x-request-id"       // 请求ID名称
 	XRequestIDPrefix    = "R"                  // 当使用纳秒时间戳作为请求ID时拼接的前缀字符串
+	TextGinRouteInit    = "gin.route.init"     // gin 路由注册日志标记
 	TextGinPanic        = "gin.panic.recovery" // gin panic日志标记
 	TextGinRequest      = "gin.request"        // gin request请求日志标记
 	TextGinResponseFail = "gin.response.fail"  // gin 业务层面失败响应日志标记
@@ -146,6 +147,19 @@ func GinCors(ctx *gin.Context) {
 		return
 	}
 	ctx.Next()
+}
+
+// GinPrintInitRoute 为gin自定义注册路由日志输出
+//  因gin路由注册信息输出只有dev模式才有，此处日志采用debug级别
+func GinPrintInitRoute(httpMethod, absolutePath, handlerName string, nuHandlers int) {
+	zapLogger.Debug(
+		TextGinResponseFail,
+		zap.String("module", TextGinRouteInit),
+		zap.String("method", httpMethod),
+		zap.String("path", absolutePath),
+		zap.String("handler", handlerName),
+		zap.Int("handler_num", nuHandlers),
+	)
 }
 
 // setRequestID 内部方法设置请求ID
