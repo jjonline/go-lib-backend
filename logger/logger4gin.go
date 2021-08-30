@@ -3,6 +3,7 @@ package logger
 import (
 	"bytes"
 	"github.com/gin-gonic/gin"
+	"github.com/go-stack/stack"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net"
@@ -51,7 +52,7 @@ func GinRecovery(ctx *gin.Context) {
 				zap.String("url", ctx.Request.URL.Path),
 				zap.String("request", string(httpRequest)),
 				zap.Any("error", err),
-				zap.Stack("stack"),
+				zap.String("stack", stack.Trace().TrimRuntime().String()),
 			)
 
 			if brokenPipe {
@@ -120,7 +121,7 @@ func GinLogHttpFail(ctx *gin.Context, err error) {
 			zap.String("url", ctx.Request.URL.String()),
 			zap.Int("http_status", ctx.Writer.Status()),
 			zap.Error(err),
-			zap.StackSkip("stack", 2),
+			zap.String("stack", stack.Trace().TrimRuntime().String()),
 		)
 	}
 }
