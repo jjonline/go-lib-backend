@@ -33,9 +33,3 @@ log.Zap.Info(
 ````
 
 > 本库亦封装实现了`redis`、`elastic`、`gorm`的logger实现，以使用底层`zap`日志组件。
-
-## 版本说明
-
-`logger/v1.1.x` 适配[go-redis ](https://github.com/go-redis/redis) v7
-
-`logger/v1.2.x` 适配[go-redis ](https://github.com/go-redis/redis) v8
