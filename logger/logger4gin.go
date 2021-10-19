@@ -69,47 +69,48 @@ func GinRecovery(ctx *gin.Context) {
 }
 
 // GinLogger zap实现的gin-logger日志中间件<gin.HandlerFunc的实现>
-//  - ctx gin的上下文
 //  - appendHandle 额外补充的自定义添加字段方法，可选参数
-func GinLogger(ctx *gin.Context, appendHandle ...func(ctx *gin.Context) []zap.Field) {
-	start := time.Now()
+func GinLogger(appendHandle func(ctx *gin.Context) []zap.Field) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		start := time.Now()
 
-	// set XRequestID
-	requestID := setRequestID(ctx)
+		// set XRequestID
+		requestID := setRequestID(ctx)
 
-	// +++++++++++++++++++++++++
-	// 记录请求 body 体
-	// Notice: http包里对*http.Request.Body这个Io是一次性读取，此处读取完需再次设置Body以便其他位置能顺利读取到参数内容
-	// +++++++++++++++++++++++++
-	bodyData := GetRequestBody(ctx)
+		// +++++++++++++++++++++++++
+		// 记录请求 body 体
+		// Notice: http包里对*http.Request.Body这个Io是一次性读取，此处读取完需再次设置Body以便其他位置能顺利读取到参数内容
+		// +++++++++++++++++++++++++
+		bodyData := GetRequestBody(ctx)
 
-	// executes at end
-	ctx.Next()
+		// executes at end
+		ctx.Next()
 
-	latencyTime := time.Now().Sub(start)
-	fields := []zap.Field{
-		zap.String("module", TextGinRequest),
-		zap.String("ua", ctx.GetHeader("User-Agent")),
-		zap.String("method", ctx.Request.Method),
-		zap.String("req_id", requestID),
-		zap.String("req_body", bodyData),
-		zap.String("client_ip", ctx.ClientIP()),
-		zap.String("url_path", ctx.Request.URL.Path),
-		zap.String("url_query", ctx.Request.URL.RawQuery),
-		zap.String("url", ctx.Request.URL.String()),
-		zap.Int("http_status", ctx.Writer.Status()),
-		zap.Duration("duration", latencyTime),
-	}
+		latencyTime := time.Now().Sub(start)
+		fields := []zap.Field{
+			zap.String("module", TextGinRequest),
+			zap.String("ua", ctx.GetHeader("User-Agent")),
+			zap.String("method", ctx.Request.Method),
+			zap.String("req_id", requestID),
+			zap.String("req_body", bodyData),
+			zap.String("client_ip", ctx.ClientIP()),
+			zap.String("url_path", ctx.Request.URL.Path),
+			zap.String("url_query", ctx.Request.URL.RawQuery),
+			zap.String("url", ctx.Request.URL.String()),
+			zap.Int("http_status", ctx.Writer.Status()),
+			zap.Duration("duration", latencyTime),
+		}
 
-	// 额外自定义补充字段
-	if len(appendHandle) > 0 {
-		fields = append(fields, appendHandle[0](ctx)...)
-	}
+		// 额外自定义补充字段
+		if appendHandle != nil {
+			fields = append(fields, appendHandle(ctx)...)
+		}
 
-	if latencyTime.Seconds() > 0.5 {
-		zapLogger.Warn(ctx.Request.URL.Path, fields...)
-	} else {
-		zapLogger.Info(ctx.Request.URL.Path, fields...)
+		if latencyTime.Seconds() > 0.5 {
+			zapLogger.Warn(ctx.Request.URL.Path, fields...)
+		} else {
+			zapLogger.Info(ctx.Request.URL.Path, fields...)
+		}
 	}
 }
 
