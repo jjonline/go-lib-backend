@@ -69,7 +69,9 @@ func GinRecovery(ctx *gin.Context) {
 }
 
 // GinLogger zap实现的gin-logger日志中间件<gin.HandlerFunc的实现>
-func GinLogger(ctx *gin.Context) {
+//  - ctx gin的上下文
+//  - appendHandle 额外补充的自定义添加字段方法，可选参数
+func GinLogger(ctx *gin.Context, appendHandle ...func(ctx *gin.Context) []zap.Field) {
 	start := time.Now()
 
 	// set XRequestID
@@ -97,6 +99,11 @@ func GinLogger(ctx *gin.Context) {
 		zap.String("url", ctx.Request.URL.String()),
 		zap.Int("http_status", ctx.Writer.Status()),
 		zap.Duration("duration", latencyTime),
+	}
+
+	// 额外自定义补充字段
+	if len(appendHandle) > 0 {
+		fields = append(fields, appendHandle[0](ctx)...)
 	}
 
 	if latencyTime.Seconds() > 0.5 {
