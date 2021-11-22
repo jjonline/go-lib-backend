@@ -2,4 +2,4 @@ module github.com/jjonline/go-lib-backend/ding
 
 go 1.16
 
-require github.com/jjonline/go-lib-backend/guzzle v0.0.0-20210820064400-0fe1ec3fcc2d
+require github.com/jjonline/go-lib-backend/guzzle v0.0.0-20211122025445-27c2aa57d1d3

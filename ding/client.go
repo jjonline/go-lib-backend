@@ -51,6 +51,7 @@ type Feed struct {
 // New 创建钉钉客户端
 //  - token  钉钉access_token，钉钉机器人设置时 Webhook 的URL里的access_token值
 //  - secret 钉钉secret，钉钉机器人设置时 启用加签获得以 SEC 开头的秘钥令牌
+//  - enable 开关，true则真实发送 false则不真实发送<不用更改注释调用代码仅初始化时设置该值即可关闭真实发送逻辑>
 //  - client 自定义 *http.Client 可自主控制http请求客户端，给 nil 不则使用默认
 func New(token, secret string, enable bool, client *http.Client) *Ding {
 	return &Ding{
@@ -98,7 +99,7 @@ func (d *Ding) send(message interface{}) error {
 
 // Text 发送文本信息
 //  - msg       文本消息内容，不宜过长
-//  - atMobiles 需要 at 的人的手机号
+//  - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
 //  - isAtAll   是否要 at 全员
 func (d *Ding) Text(msg string, atMobiles []string, isAtAll bool) error {
 	if !d.enable {
@@ -120,7 +121,7 @@ func (d *Ding) Text(msg string, atMobiles []string, isAtAll bool) error {
 // Markdown 发送markdown信息
 //  - title     MD格式消息的标题，会以 ## 即h2形式显示在首行
 //  - msg       MD的内容<注意使用MarkDown格式，支持链接、图片>
-//  - atMobiles 需要 at 的人的手机号
+//  - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
 //  - isAtAll   是否要 at 全员
 //  支持的MD语法见：https://developers.dingtalk.com/document/app/custom-robot-access#section-e4x-4y8-9k0
 // 		例子1：

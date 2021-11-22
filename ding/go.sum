@@ -1,4 +1,2 @@
-github.com/jjonline/go-lib-backend/guzzle v0.0.0-20210805020402-80a1ecb68586 h1:R6BQZUomXXRu/Y64SAZt8v51++nq6bU/43OlC2nKLGs=
-github.com/jjonline/go-lib-backend/guzzle v0.0.0-20210805020402-80a1ecb68586/go.mod h1:VUDlJWKQJpJyBDPbhAl2YwTglmrNJOhsPTg7c3jmAmo=
-github.com/jjonline/go-lib-backend/guzzle v0.0.0-20210820064400-0fe1ec3fcc2d h1:u2HhqLmuZUrLECrIpy1Srff2ApV+aK8BdSkWI9X3/tY=
-github.com/jjonline/go-lib-backend/guzzle v0.0.0-20210820064400-0fe1ec3fcc2d/go.mod h1:VUDlJWKQJpJyBDPbhAl2YwTglmrNJOhsPTg7c3jmAmo=
+github.com/jjonline/go-lib-backend/guzzle v0.0.0-20211122025445-27c2aa57d1d3 h1:sRPRvkpq/hg6y7EmCqObljneIM8MncOygd2KKNNbB/E=
+github.com/jjonline/go-lib-backend/guzzle v0.0.0-20211122025445-27c2aa57d1d3/go.mod h1:VUDlJWKQJpJyBDPbhAl2YwTglmrNJOhsPTg7c3jmAmo=
