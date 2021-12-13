@@ -1,12 +1,78 @@
 package convert
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // String 能转换的string
 type String string
+
+// IsEmpty 是否为空字符串：空字符串、空白符等
+func (s String) IsEmpty() bool {
+	if len(string(s)) == 0 {
+		return true
+	}
+	if strings.TrimSpace(string(s)) == "" {
+		return true
+	}
+	return false
+}
+
+// Lower calls the strings.ToLower
+func (s String) Lower() string {
+	return strings.ToLower(string(s))
+}
+
+// Upper calls the strings.ToUpper
+func (s String) Upper() string {
+	return strings.ToUpper(string(s))
+}
+
+// Title calls the strings.Title
+func (s String) Title() string {
+	if s.IsEmpty() {
+		return string(s)
+	}
+	return strings.Title(string(s))
+}
+
+// UnTitle return the original string if rune is not letter at index 0
+func (s String) UnTitle() string {
+	ss := string(s)
+	if s.IsEmpty() {
+		return ss
+	}
+	r := rune(ss[0])
+	if !unicode.IsUpper(r) && !unicode.IsLower(r) {
+		return ss
+	}
+	return string(unicode.ToLower(r)) + ss[1:]
+}
+
+// ToCamel converts the input text into camel case
+func (s String) ToCamel() string {
+	list := s.splitBy(func(r rune) bool {
+		return r == '_'
+	}, true)
+	var target []string
+	for _, item := range list {
+		target = append(target, String(item).Title())
+	}
+	return strings.Join(target, "")
+}
+
+// ToSnake converts the input text into snake case
+func (s String) ToSnake() string {
+	list := s.splitBy(unicode.IsUpper, false)
+	var target []string
+	for _, item := range list {
+		target = append(target, String(item).Lower())
+	}
+	return strings.Join(target, "_")
+}
 
 // Int 转换为int型
 // 示例：
@@ -131,4 +197,30 @@ func (s String) Int64Slice(sep string) []int64 {
 		ret = append(ret, String(ss[i]).Int64())
 	}
 	return ret
+}
+
+// it will not ignore spaces
+func (s String) splitBy(fn func(r rune) bool, remove bool) []string {
+	if s.IsEmpty() {
+		return nil
+	}
+	var list []string
+	buffer := new(bytes.Buffer)
+	for _, r := range s {
+		if fn(r) {
+			if buffer.Len() != 0 {
+				list = append(list, buffer.String())
+				buffer.Reset()
+			}
+			if !remove {
+				buffer.WriteRune(r)
+			}
+			continue
+		}
+		buffer.WriteRune(r)
+	}
+	if buffer.Len() != 0 {
+		list = append(list, buffer.String())
+	}
+	return list
 }
