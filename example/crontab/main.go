@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jjonline/go-lib-backend/crontab"
+	"github.com/jjonline/go-lib-backend/crond"
 	"github.com/jjonline/go-lib-backend/example/crontab/console"
 	"github.com/jjonline/go-lib-backend/logger"
 	"go.uber.org/zap"
@@ -13,7 +13,7 @@ import (
 func main() {
 	// init
 	log := logger.New("debug", "stderr")
-	siCrontab := crontab.New(log.Zap.With(zap.String("module", "crontab")))
+	siCrontab := crond.New(log.Zap.With(zap.String("module", "crontab")))
 
 	// register
 	siCrontab.Register(&console.TestCommandOk{})
