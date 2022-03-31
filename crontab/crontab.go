@@ -1,12 +1,14 @@
 package crontab
 
 import (
-	"github.com/jjonline/go-lib-backend/contract"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 	"sync"
 	"time"
 )
+
+// 定义日志字段中标记类型的名称
+const module = "crontab"
 
 // Crontab 定时任务实现
 type Crontab struct {
@@ -16,7 +18,7 @@ type Crontab struct {
 }
 
 //  registeredCommand 已注册的定时任务映射map
-var registeredCommand = make(map[int]contract.Command)
+var registeredCommand = make(map[int]CronTask)
 
 // New 实例化crontab实例
 func New(logger *zap.Logger) *Crontab {
@@ -31,8 +33,8 @@ func New(logger *zap.Logger) *Crontab {
 
 // Register 注册定时任务类
 //  - @param spec string 定时规则：`Second | Minute | Hour | Dom (day of month) | Month | Dow (day of week)`
-//  - @param command contract.Command 任务类需实现命令契约，并且传递结构体实例的指针
-func (c *Crontab) Register(spec string, command contract.Command) {
+//  - @param task CronTask 任务类需实现命令契约，并且传递结构体实例的指针
+func (c *Crontab) Register(task CronTask) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -41,45 +43,60 @@ func (c *Crontab) Register(spec string, command contract.Command) {
 		// 处理并恢复业务代码可能导致的panic，避免cron进程退出
 		defer func() {
 			if err := recover(); err != nil {
-				// record log
+				// record panic log
 				c.logger.Error(
 					"crontab.panic",
-					zap.String("signature", command.Signature()),
-					zap.String("description", command.Description()),
+					zap.String("module", module),
+					zap.String("signature", task.Signature()),
+					zap.String("rule", task.Rule()),
 					zap.Stack("stack"),
 				)
 			}
 		}()
 
 		// 执行定时任务
-		if err := command.Execute(); err != nil {
+		c.logger.Info(
+			"crontab.execute.start",
+			zap.String("module", module),
+			zap.String("signature", task.Signature()),
+			zap.String("rule", task.Rule()),
+		)
+		err := task.Execute()
+		if err != nil {
 			c.logger.Error(
 				"crontab.execute.failed",
-				zap.String("signature", command.Signature()),
-				zap.String("description", command.Description()),
-				zap.String("spec", spec),
+				zap.String("module", module),
+				zap.String("signature", task.Signature()),
+				zap.String("rule", task.Rule()),
+			)
+		} else {
+			c.logger.Info(
+				"crontab.execute.ok",
+				zap.String("module", module),
+				zap.String("signature", task.Signature()),
+				zap.String("rule", task.Rule()),
 			)
 		}
 	}
 
 	// 注册任务
-	entry_id, err := c.cron.AddFunc(spec, wrapper)
+	entryId, err := c.cron.AddFunc(task.Rule(), wrapper)
 	if err != nil {
 		c.logger.Error(
 			"crontab.register.err",
-			zap.String("signature", command.Signature()),
-			zap.String("description", command.Description()),
-			zap.String("spec", spec),
+			zap.String("module", module),
+			zap.String("signature", task.Signature()),
+			zap.String("rule", task.Rule()),
 			zap.Error(err),
 		)
 	} else {
 		c.logger.Info(
-			"crontab.register",
-			zap.String("signature", command.Signature()),
-			zap.String("description", command.Description()),
-			zap.String("spec", spec),
+			"crontab.register.ok",
+			zap.String("module", module),
+			zap.String("signature", task.Signature()),
+			zap.String("rule", task.Rule()),
 		)
-		registeredCommand[int(entry_id)] = command
+		registeredCommand[int(entryId)] = task
 	}
 }
 

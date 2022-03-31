@@ -43,7 +43,6 @@ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpO
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.2 h1:eVKgfIdy9b6zbWBMgFpfDPoAMifwSZagU9HmEU6zgiI=
 github.com/jinzhu/now v1.1.2/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
-github.com/jjonline/go-lib-backend/contract v0.0.0-20210720014741-ee748420702a h1:NxG5VB6l785XGNAkClHCZ3PDPtigThdkhz9iq2wDHGw=
 github.com/jjonline/go-lib-backend/contract v0.0.0-20210720014741-ee748420702a/go.mod h1:vpPWzCibV/1L+eZoNBIujom3i/XhC1Q9OS/O0wa8wb0=
 github.com/jjonline/go-lib-backend/logger v0.0.0-20210720014741-ee748420702a h1:N/W71Ng94KSmjd91IDzfJib6MBOTcVZUpyE8TwDqQZc=
 github.com/jjonline/go-lib-backend/logger v0.0.0-20210720014741-ee748420702a/go.mod h1:yTTDu7t1F/SRDmMvmvX4B3D2mAP5JBlEnCTPf3ImrjI=

@@ -16,9 +16,9 @@ func main() {
 	siCrontab := crontab.New(log.Zap.With(zap.String("module", "crontab")))
 
 	// register
-	siCrontab.Register("0 */1 * * * *", &console.TestCommandOk{})
-	siCrontab.Register("0 */1 * * * *", &console.TestCommandFail{})
-	siCrontab.Register("0 */1 * * * *", &console.TestCommandPanic{})
+	siCrontab.Register(&console.TestCommandOk{})
+	siCrontab.Register(&console.TestCommandFail{})
+	siCrontab.Register(&console.TestCommandPanic{})
 
 	// 接收退出信号
 	quitChan := make(chan os.Signal)
