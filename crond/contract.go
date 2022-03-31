@@ -1,4 +1,4 @@
-package crontab
+package crond
 
 // CronTask 定时任务类契约
 type CronTask interface {

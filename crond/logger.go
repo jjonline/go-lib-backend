@@ -1,4 +1,4 @@
-package crontab
+package crond
 
 import (
 	"github.com/robfig/cron/v3"
@@ -35,7 +35,7 @@ func (l cronLog) Info(msg string, keysAndValues ...interface{}) {
 
 	// 忽略掉wake类型
 	if msg != "wake" {
-		l.logger.Debug("crontab.log." + msg, fields...)
+		l.logger.Debug("crontab.log."+msg, fields...)
 	}
 }
 
@@ -48,5 +48,5 @@ func (l cronLog) Error(err error, msg string, keysAndValues ...interface{}) {
 			fields = append(fields, zap.Any("stack", keysAndValues[key+1]))
 		}
 	}
-	l.logger.Error("crontab.error." + msg, fields...)
+	l.logger.Error("crontab.error."+msg, fields...)
 }

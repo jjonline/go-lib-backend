@@ -1,4 +1,4 @@
-module github.com/jjonline/go-lib-backend/crontab
+module github.com/jjonline/go-lib-backend/crond
 
 go 1.16
 

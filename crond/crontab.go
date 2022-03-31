@@ -1,4 +1,4 @@
-package crontab
+package crond
 
 import (
 	"github.com/robfig/cron/v3"
