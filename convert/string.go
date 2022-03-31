@@ -31,37 +31,31 @@ func (s String) Upper() string {
 	return strings.ToUpper(string(s))
 }
 
-// Title calls the strings.Title
-func (s String) Title() string {
-	if s.IsEmpty() {
-		return string(s)
-	}
-	return strings.Title(string(s))
-}
-
-// UnTitle return the original string if rune is not letter at index 0
-func (s String) UnTitle() string {
-	ss := string(s)
-	if s.IsEmpty() {
-		return ss
-	}
-	r := rune(ss[0])
-	if !unicode.IsUpper(r) && !unicode.IsLower(r) {
-		return ss
-	}
-	return string(unicode.ToLower(r)) + ss[1:]
-}
-
 // ToCamel converts the input text into camel case
+//  - aa_bb to AaBb
+//  - aa-bb to AaBb
 func (s String) ToCamel() string {
-	list := s.splitBy(func(r rune) bool {
-		return r == '_'
-	}, true)
-	var target []string
-	for _, item := range list {
-		target = append(target, String(item).Title())
+	data := make([]byte, 0, len(s))
+	j := false
+	k := false
+	num := len(s) - 1
+	for i := 0; i <= num; i++ {
+		d := s[i]
+		if k == false && d >= 'A' && d <= 'Z' {
+			k = true
+		}
+		if d >= 'a' && d <= 'z' && (j || k == false) {
+			d = d - 32
+			j = false
+			k = true
+		}
+		if k && (d == '_' || d == '-') && num > i && s[i+1] >= 'a' && s[i+1] <= 'z' {
+			j = true
+			continue
+		}
+		data = append(data, d)
 	}
-	return strings.Join(target, "")
+	return string(data[:])
 }
 
 // ToSnake converts the input text into snake case
@@ -84,6 +78,18 @@ func (s String) Int() int {
 	}
 	i, _ := strconv.Atoi(string(s))
 	return i
+}
+
+// UInt 字符串转换为uint
+// 示例：
+//   a := "1"
+//   i := convert.String(a).UInt64()
+func (s String) UInt() uint {
+	if s == "" {
+		return 0
+	}
+	i, _ := strconv.ParseInt(string(s), 10, 64)
+	return uint(i)
 }
 
 // UInt8 字符串转换为uint8
