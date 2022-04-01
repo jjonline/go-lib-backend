@@ -81,7 +81,7 @@ func (q *Queue) BootstrapOne(task TaskIFace) error {
 	return q.manager.bootstrapOne(task)
 }
 
-// BootstrapOne boot注册载入多个队列任务
+// Bootstrap boot注册载入多个队列任务
 //  @tasks 任务类实例指针切片
 func (q *Queue) Bootstrap(tasks []TaskIFace) error {
 	return q.manager.bootstrap(tasks)
@@ -117,7 +117,7 @@ func (q *Queue) Dispatch(task TaskIFace, payload interface{}) error {
 	return q.queue.Push(task.Name(), queuePayload)
 }
 
-// DelayAt 投递一个延迟队列Job任务
+// DelayAt 投递一个指定的将来时刻执行的延迟队列Job任务
 func (q *Queue) DelayAt(task TaskIFace, payload interface{}, delay time.Time) error {
 	queuePayload, err := q.marshalPayload(task, payload)
 	if nil != err {
@@ -127,7 +127,7 @@ func (q *Queue) DelayAt(task TaskIFace, payload interface{}, delay time.Time) er
 	return q.queue.LaterAt(task.Name(), delay, queuePayload)
 }
 
-// Delay 投递一个延迟队列Job任务
+// Delay 投递一个指定延迟时长的延迟队列Job任务
 func (q *Queue) Delay(task TaskIFace, payload interface{}, duration time.Duration) error {
 	queuePayload, err := q.marshalPayload(task, payload)
 	if nil != err {
@@ -138,8 +138,8 @@ func (q *Queue) Delay(task TaskIFace, payload interface{}, duration time.Duratio
 }
 
 // DispatchByName 按任务name投递一个队列Job任务
-// 投递一个异步立即执行的任务
-// 重要:使用该方法则意味着投递任务之前必须bootstrap任务类，新项目请尽量使用DelayAt方法
+//  - 投递一个异步立即执行的任务
+//  - 重要:使用该方法则意味着投递任务之前必须bootstrap任务类，新项目请尽量使用Dispatch方法
 func (q *Queue) DispatchByName(name string, payload interface{}) error {
 	task, exist := q.manager.tasks[name]
 	if !exist {
@@ -150,8 +150,8 @@ func (q *Queue) DispatchByName(name string, payload interface{}) error {
 }
 
 // DelayAtByName 按任务name投递一个延迟队列Job任务
-// 投递一个异步延迟执行的任务
-// 重要提示:使用该方法则意味着投递任务之前必须bootstrap任务类，新项目请尽量使用DelayAt方法
+//  - 投递一个异步延迟执行的任务
+//  - 重要提示:使用该方法则意味着投递任务之前必须bootstrap任务类，新项目请尽量使用DelayAt方法
 func (q *Queue) DelayAtByName(name string, payload interface{}, delay time.Time) error {
 	task, exist := q.manager.tasks[name]
 	if !exist {
@@ -159,6 +159,18 @@ func (q *Queue) DelayAtByName(name string, payload interface{}, delay time.Time)
 	}
 
 	return q.DelayAt(task, payload, delay)
+}
+
+// DelayByName 按任务name投递一个将来时刻执行的延迟队列Job任务
+//  - 投递一个异步延迟执行的任务
+//  - 重要提示:使用该方法则意味着投递任务之前必须bootstrap任务类，新项目请尽量使用Delay方法
+func (q *Queue) DelayByName(name string, payload interface{}, duration time.Duration) error {
+	task, exist := q.manager.tasks[name]
+	if !exist {
+		return fmt.Errorf("queue %s do not bootstrap", name)
+	}
+
+	return q.Delay(task, payload, duration)
 }
 
 // Size 获取指定队列当前长度
