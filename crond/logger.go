@@ -37,7 +37,7 @@ func (l cronLog) Info(msg string, keysAndValues ...interface{}) {
 
 	// 忽略掉wake类型
 	if msg != "wake" {
-		l.logger.Debug("crontab.log."+msg, fields...)
+		l.logger.Info("crontab.log."+msg, fields...)
 	}
 }
 
