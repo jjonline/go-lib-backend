@@ -16,7 +16,7 @@ func (r RedisHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.
 	return ctx, nil
 }
 
-// BeforeProcess redis执行命令后hook
+// AfterProcess redis执行命令后hook
 func (r RedisHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	if zapLogger != nil {
 		if err := cmd.Err(); err != nil && err != redis.Nil {
@@ -32,12 +32,12 @@ func (r RedisHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	return nil
 }
 
-// BeforeProcess redis执行pipe前hook
+// BeforeProcessPipeline redis执行pipe前hook
 func (r RedisHook) BeforeProcessPipeline(ctx context.Context, cmdItems []redis.Cmder) (context.Context, error) {
 	return ctx, nil
 }
 
-// BeforeProcess redis执行pipe后hook
+// AfterProcessPipeline redis执行pipe后hook
 func (r RedisHook) AfterProcessPipeline(ctx context.Context, cmdItems []redis.Cmder) error {
 	if zapLogger != nil {
 		var err error
