@@ -57,7 +57,7 @@ func (l *Logger) Printf(format string, v ...interface{}) {
 }
 
 // DebugRecord 分module记录日志debug级别日志
-//  -- module 	自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
+//  -- module   自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
 //  -- msg      日志msg
 //  -- ...filed 可选的自定义添加的字段
 func (l *Logger) DebugRecord(module string, msg string, filed ...zap.Field) {
@@ -66,7 +66,7 @@ func (l *Logger) DebugRecord(module string, msg string, filed ...zap.Field) {
 }
 
 // InfoRecord 分module记录日志info级别日志
-//  -- module 	自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
+//  -- module   自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
 //  -- msg      日志msg
 //  -- ...filed 可选的自定义添加的字段
 func (l *Logger) InfoRecord(module string, msg string, filed ...zap.Field) {
@@ -75,7 +75,7 @@ func (l *Logger) InfoRecord(module string, msg string, filed ...zap.Field) {
 }
 
 // WarnRecord 分module记录日志warn级别日志
-//  -- module 	自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
+//  -- module   自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
 //  -- msg      日志msg
 //  -- ...filed 可选的自定义添加的字段
 func (l *Logger) WarnRecord(module string, msg string, filed ...zap.Field) {
@@ -84,7 +84,7 @@ func (l *Logger) WarnRecord(module string, msg string, filed ...zap.Field) {
 }
 
 // ErrorRecord 分module记录日志error级别日志
-//  -- module 	自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
+//  -- module   自定义module名称，即添加至日志JSON中的module的值，便于Es按module字段值分类别类检索
 //  -- msg      日志msg
 //  -- ...filed 可选的自定义添加的字段
 func (l *Logger) ErrorRecord(module string, msg string, filed ...zap.Field) {
