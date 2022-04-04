@@ -81,7 +81,7 @@ func GinLogger(appendHandle func(ctx *gin.Context) []zap.Field) func(ctx *gin.Co
 		// 记录请求 body 体
 		// Notice: http包里对*http.Request.Body这个Io是一次性读取，此处读取完需再次设置Body以便其他位置能顺利读取到参数内容
 		// +++++++++++++++++++++++++
-		bodyData := GetRequestBody(ctx)
+		bodyData := GetRequestBody(ctx, true)
 
 		// executes at end
 		ctx.Next()
@@ -191,24 +191,25 @@ func GetRequestID(ctx *gin.Context) string {
 }
 
 // GetRequestBody 获取请求body体
-func GetRequestBody(ctx *gin.Context) string {
+// - strip 是否要将JSON类型的body体去除反斜杠和大括号，以便于Es等不做深层字段解析而当做一个字符串
+func GetRequestBody(ctx *gin.Context, strip bool) string {
 	bodyData := ""
 
-	// post、put、patch、delete四种类型请求记录body提
-	if ctx.Request.Method == http.MethodPost ||
-		ctx.Request.Method == http.MethodPut ||
-		ctx.Request.Method == http.MethodPatch ||
-		ctx.Request.Method == http.MethodDelete {
-		if ctx.ContentType() == "application/json" {
+	// post、put、patch、delete四种类型请求记录body体
+	if IsModifyMethod(ctx.Request.Method) {
+		// 判断是否为JSON实体类型<application/json>，仅需要判断content-type包含/json字符串即可
+		if strings.Contains(ctx.ContentType(), "/json") {
 			buf, _ := ioutil.ReadAll(ctx.Request.Body)
 			bodyData = string(buf)
 			_ = ctx.Request.Body.Close()
 			ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf)) // 重要
 
 			// strip json `\{}` to ignore transfer JSON struct
-			bodyData = strings.Replace(bodyData, "\\", "", -1)
-			bodyData = strings.Replace(bodyData, "{", "", -1)
-			bodyData = strings.Replace(bodyData, "}", "", -1)
+			if strip {
+				bodyData = strings.Replace(bodyData, "\\", "", -1)
+				bodyData = strings.Replace(bodyData, "{", "", -1)
+				bodyData = strings.Replace(bodyData, "}", "", -1)
+			}
 		} else {
 			_ = ctx.Request.ParseForm() // 尝试解析表单, 文件表单忽略
 			bodyData = ctx.Request.PostForm.Encode()
@@ -216,4 +217,13 @@ func GetRequestBody(ctx *gin.Context) string {
 	}
 
 	return bodyData
+}
+
+// IsModifyMethod 检查当前请求方式否为修改类型
+//  - 即判断请求是否为post、put、patch、delete
+func IsModifyMethod(method string) bool {
+	return method == http.MethodPost ||
+		method == http.MethodPut ||
+		method == http.MethodPatch ||
+		method == http.MethodDelete
 }
