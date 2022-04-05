@@ -191,7 +191,7 @@ func GetRequestID(ctx *gin.Context) string {
 }
 
 // GetRequestBody 获取请求body体
-// - strip 是否要将JSON类型的body体去除反斜杠和大括号，以便于Es等不做深层字段解析而当做一个字符串
+//  - strip 是否要将JSON类型的body体去除反斜杠和大括号，以便于Es等不做深层字段解析而当做一个字符串
 func GetRequestBody(ctx *gin.Context, strip bool) string {
 	bodyData := ""
 
