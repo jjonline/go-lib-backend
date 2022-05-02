@@ -140,6 +140,8 @@ func GinCors(ctx *gin.Context) {
 	ctx.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,X-App-Client,X-App-Id,X-Requested-With,Authorization")
 	ctx.Header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE,PATCH")
+	// REF https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Access-Control-Max-Age
+	ctx.Header("Access-Control-Max-Age", "7200")
 	if ctx.Request.Method == http.MethodOptions {
 		zapLogger.Debug(
 			TextGinPreflight,
