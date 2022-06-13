@@ -52,7 +52,7 @@ func (t TestTask) Execute(ctx context.Context, job *queue.RawBody) error {
 service := queue.New(
     queue.Redis, // 队列底层驱动器类型，详见包内常量
     redisClient, // 队列底层驱动client实例
-    zapLogger, // zap日志实例，用于记录日志
+    logger, // 实现 queue.Logger 接口的日志实例，用于记录日志
     5, // 单个队列最大并发消费协程数
 )
 
@@ -79,7 +79,7 @@ go func() {
     // wait exit signal
     <-quitChan
 
-    zapLogger.Info("receive exit signal")
+    logger.Info("receive exit signal")
 
     // shutdown worker daemon with timeout context
     timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -87,9 +87,9 @@ go func() {
     
     // graceful shutdown by signal
     if err := queueService.ShutDown(timeoutCtx); nil != err {
-        zapLogger.Warn("violence shutdown by signal: " + err.Error())
+        logger.Warn("violence shutdown by signal: " + err.Error())
     } else {
-        zapLogger.Info("graceful shutdown by signal")
+        logger.Info("graceful shutdown by signal")
     }
 
     // closer close
@@ -98,14 +98,14 @@ go func() {
 
 // start worker daemon
 if err := queueService.Start(); nil != err && err != queue.ErrQueueClosed {
-    zapLogger.Info("queue started failed: " + err.Error())
+    logger.Info("queue started failed: " + err.Error())
     close(idleCloser)
 } else {
-    zapLogger.Info("queue worker started")
+    logger.Info("queue worker started")
 }
 
 <-idleCloser
-zapLogger.Info("queue worker quit, daemon exited")
+logger.Info("queue worker quit, daemon exited")
 ````
 
 ### step3、生产者端投递job任务
@@ -116,7 +116,7 @@ zapLogger.Info("queue worker quit, daemon exited")
 service := queue.New(
     queue.Redis, // 队列底层驱动器类型，详见包内常量
     redisClient, // 队列底层驱动client实例
-    zapLogger, // zap日志实例，用于记录日志
+    logger, // 实现 queue.Logger 接口的日志实例，用于记录日志
 )
 
 // 单个任务类：若生产者端和消费者端分处不同进程，生产者端任务类也需要执行注册
