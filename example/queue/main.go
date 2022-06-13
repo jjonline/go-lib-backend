@@ -6,7 +6,6 @@ import (
 	"github.com/jjonline/go-lib-backend/example/queue/client"
 	"github.com/jjonline/go-lib-backend/example/queue/tasks"
 	"github.com/jjonline/go-lib-backend/queue"
-	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,19 +14,19 @@ import (
 
 func main() {
 	// init zap logger && redis client
-	zapLogger := client.NewZap("info", "stderr").With(zap.String("module", "queue"))
+	_logger := &client.DefineLogger{}
 
 	// 使用memory内存驱动
 	// !!!警告：本地memory驱动仅能用于本地开发调试，不得用于prod生产环境，此处仅为示例!!!
-	zapLogger.Info("init queue service")
-	queueService := queue.New(queue.Redis, client.NewRedis(), zapLogger, 5)
+	_logger.Info("init queue service")
+	queueService := queue.New(queue.Redis, client.NewRedis(), _logger, 5)
 
 	// 或者使用 redis驱动：请留意redis的链接信息，示例使用了本机redis
 	// redisClient := client.NewRedis()
-	// queueService := queue.New(queue.Memory, nil, zapLogger, 5)
+	// queueService := queue.New(queue.Memory, nil, _logger, 5)
 
 	// register task
-	zapLogger.Info("register task")
+	_logger.Info("register task")
 	//_ = queueService.BootstrapOne(&tasks.TestTask{})
 	_ = queueService.BootstrapOne(&tasks.TestTimeout{})
 
@@ -47,7 +46,7 @@ func main() {
 		// wait exit signal
 		<-quitChan
 
-		zapLogger.Info("receive exit signal")
+		_logger.Info("receive exit signal")
 
 		// shutdown worker daemon with timeout context
 		timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -55,9 +54,9 @@ func main() {
 
 		// graceful shutdown by signal
 		if err := queueService.ShutDown(timeoutCtx); nil != err {
-			zapLogger.Warn("violence shutdown by signal: " + err.Error())
+			_logger.Warn("violence shutdown by signal: " + err.Error())
 		} else {
-			zapLogger.Info("graceful shutdown by signal")
+			_logger.Info("graceful shutdown by signal")
 		}
 
 		// closer close
@@ -66,14 +65,14 @@ func main() {
 
 	// start worker daemon
 	if err := queueService.Start(); nil != err && err != queue.ErrQueueClosed {
-		zapLogger.Info("queue started failed: " + err.Error())
+		_logger.Info("queue started failed: " + err.Error())
 		close(idleCloser)
 	} else {
-		zapLogger.Info("queue worker started")
+		_logger.Info("queue worker started")
 	}
 
 	// test dispatch task after daemon started 10 second
-	time.AfterFunc(10 * time.Second, func() {
+	time.AfterFunc(10*time.Second, func() {
 		// test_task
 		fmt.Printf("1.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
 		err := queueService.Dispatch(&tasks.TestTask{}, "dispatch task")
@@ -82,13 +81,13 @@ func main() {
 		}
 
 		fmt.Printf("2.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
-		err = queueService.Delay(&tasks.TestTask{}, "delay task", 10 * time.Second)
+		err = queueService.Delay(&tasks.TestTask{}, "delay task", 10*time.Second)
 		if err != nil {
 			fmt.Printf("delay taks error: %s", err.Error())
 		}
 
 		fmt.Printf("3.queue len is %d\n", queueService.Size(&tasks.TestTask{}))
-		err = queueService.DelayAt(&tasks.TestTask{}, "delayAt task", time.Now().Add(5 * time.Second))
+		err = queueService.DelayAt(&tasks.TestTask{}, "delayAt task", time.Now().Add(5*time.Second))
 		if err != nil {
 			fmt.Printf("delayAt taks error: %s", err.Error())
 		}
@@ -114,5 +113,5 @@ func main() {
 	})
 
 	<-idleCloser
-	zapLogger.Info("queue worker quit, daemon exited")
+	_logger.Info("queue worker quit, daemon exited")
 }
