@@ -7,7 +7,6 @@ package queue
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -21,19 +20,19 @@ const (
 
 // Queue 队列struct
 type Queue struct {
-	queueBasic             // 引入队列基础方法
-	driver     string      // 记录底层队列实现
-	queue      QueueIFace  // 底层队列实现实体类，指针类型interface
-	manager    *manager    // 管理者对象实例
-	logger     *zap.Logger // 队列日志记录器，统一固定使用zap
+	queueBasic            // 引入队列基础方法
+	driver     string     // 记录底层队列实现
+	queue      QueueIFace // 底层队列实现实体类，指针类型interface
+	manager    *manager   // 管理者对象实例
+	logger     Logger     // 队列日志记录器，统一固定使用zap
 }
 
 // New 初始化一个队列
 // 	@param driver     队列实现底层驱动，可选值见上方14行附近位置的常量
 // 	@param conn       driver对应底层驱动连接器句柄，具体类型参考 QueueIFace 实体类
-// 	@param logger     zap日志组件实例
+// 	@param logger     实现 Logger 接口的结构体实例的指针对象
 // 	@param concurrent 单个队列最大并发消费数
-func New(driver string, conn interface{}, logger *zap.Logger, concurrent int64) *Queue {
+func New(driver string, conn interface{}, logger Logger, concurrent int64) *Queue {
 	var queue QueueIFace
 
 	// init specify queue driver

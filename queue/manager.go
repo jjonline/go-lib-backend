@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go.uber.org/zap"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -23,7 +22,7 @@ import (
 // *************************************************
 
 // jitterBase looper最小为450毫秒间隔，最大为1000毫秒间隔
-var	jitterBase = 450 * time.Millisecond
+var jitterBase = 450 * time.Millisecond
 
 type atomicBool int32
 
@@ -35,7 +34,7 @@ func (b *atomicBool) setFalse()   { atomic.StoreInt32((*int32)(b), 0) }
 type manager struct {
 	queue            QueueIFace            // 队列底层实现实例
 	channel          chan JobIFace         // 任务类执行job的通道chan
-	logger           *zap.Logger           // zap logger
+	logger           Logger                // 实现 Logger 接口的结构体实例的指针对象
 	concurrent       int64                 // 单个队列最大并发worker数
 	tasks            map[string]TaskIFace  // 队列名与任务类实例映射map，interface无需显式指定执指针类型，但实际传参需指针类型
 	failedJobHandler FailedJobHandler      // 失败任务[最大尝试次数后仍然尝试失败（Execute返回了Error 或 执行导致panic）的任务]处理器
@@ -49,9 +48,9 @@ type manager struct {
 
 // newManager 实例化一个manager
 // @param queue      队列实现底层实例指针
-// @param logger     zap日志实例
+// @param logger     实现 Logger 接口的结构体实例的指针对象
 // @param concurrent 队列实际执行并发worker工作者数量
-func newManager(queue QueueIFace, logger *zap.Logger, concurrent int64) *manager {
+func newManager(queue QueueIFace, logger Logger, concurrent int64) *manager {
 	return &manager{
 		queue:        queue,
 		channel:      make(chan JobIFace), // no buffer channel, execute when worker received
@@ -72,9 +71,12 @@ func (m *manager) bootstrapOne(task TaskIFace) error {
 	// log
 	m.logger.Debug(
 		"bootstrap",
-		zap.String("name", task.Name()),
-		zap.Int64("max_tries", task.MaxTries()),
-		zap.Int64("retry_interval", task.RetryInterval()),
+		"name",
+		task.Name(),
+		"max_tries",
+		IFaceToString(task.MaxTries()),
+		"retry_interval",
+		IFaceToString(task.RetryInterval()),
 	)
 
 	m.tasks[task.Name()] = task
@@ -149,11 +151,11 @@ func (m *manager) looper() {
 // startWorker 启动队列进程工作者
 func (m *manager) startWorker(workerID int64) {
 	defer func() {
-		m.logger.Info(fmt.Sprintf("queue worker-%d exited", workerID), zap.Int64("worker_id", workerID))
+		m.logger.Info(fmt.Sprintf("queue worker-%d exited", workerID), "worker_id", IFaceToString(workerID))
 	}()
 
 	// started logger
-	m.logger.Info(fmt.Sprintf("queue worker-%d started", workerID), zap.Int64("worker_id", workerID))
+	m.logger.Info(fmt.Sprintf("queue worker-%d started", workerID), "worker_id", IFaceToString(workerID))
 
 	// 阻塞消费job chan
 	for job := range m.channel {
@@ -178,11 +180,11 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		if err := recover(); err != nil {
 			m.logger.Error(
 				"queue.execute.panic",
-				zap.StackSkip("stack", 2),
-				zap.String("queue", job.GetName()),
-				zap.Int64("worker_id", workerID),
-				zap.Any("payload", job.Payload()),
-				zap.Any("error", err),
+				"stack", "",
+				"queue", job.GetName(),
+				"worker_id", IFaceToString(workerID),
+				"payload", IFaceToString(job.Payload()),
+				"error", IFaceToString(err),
 			)
 
 			var eErr error
@@ -207,9 +209,9 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	if _, exist := m.inWorkingMap[job.Payload().ID]; exist {
 		m.logger.Warn(
 			ErrAbortForWaitingPrevJobFinish.Error(),
-			zap.String("queue", job.GetName()),
-			zap.Any("payload", job.Payload()),
-			zap.Time("pop_time", job.PopTime()),
+			"queue", job.GetName(),
+			"payload", IFaceToString(job.Payload()),
+			"pop_time", job.PopTime().String(),
 		)
 
 		// 当前任务作为延迟任务再次投递
@@ -235,9 +237,9 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	// step4、execute job task with timeout control
 	m.logger.Info(
 		textJobProcessing,
-		zap.String("queue", job.GetName()),
-		zap.Int64("worker_id", workerID),
-		zap.Any("payload", job.Payload()),
+		"queue", job.GetName(),
+		"worker_id", IFaceToString(workerID),
+		"payload", IFaceToString(job.Payload()),
 	)
 
 	// timeout context control
@@ -251,20 +253,20 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 			// step5、任务类执行成功：删除任务即可
 			m.logger.Info(
 				textJobProcessed,
-				zap.String("queue", job.GetName()),
-				zap.Int64("worker_id", workerID),
-				zap.Any("payload", job.Payload()),
-				zap.Duration("duration", time.Now().Sub(job.PopTime())),
+				"queue", job.GetName(),
+				"worker_id", IFaceToString(workerID),
+				"payload", IFaceToString(job.Payload()),
+				"duration", IFaceToString(int64(time.Now().Sub(job.PopTime()))),
 			)
 			_ = job.Delete()
 		} else {
 			// step6、任务类执行失败：依赖重试设置执行重试or最终执行失败处理
 			m.logger.Error(
 				textJobFailed,
-				zap.String("queue", job.GetName()),
-				zap.Int64("worker_id", workerID),
-				zap.Any("payload", job.Payload()),
-				zap.Duration("duration", time.Now().Sub(job.PopTime())),
+				"queue", job.GetName(),
+				"worker_id", IFaceToString(workerID),
+				"payload", IFaceToString(job.Payload()),
+				"duration", IFaceToString(int64(time.Now().Sub(job.PopTime()))),
 			)
 			m.markJobAsFailedIfWillExceedMaxAttempts(job, err)
 		}
@@ -297,9 +299,9 @@ func (m *manager) markJobAsFailedIfAlreadyExceedsMaxAttempts(job JobIFace) (need
 	if time.Now().Sub(job.PopTime()) >= job.Timeout() {
 		m.logger.Warn(
 			textJobTooLong,
-			zap.String("queue", job.GetName()),
-			zap.Any("payload", job.Payload()),
-			zap.Time("pop_time", job.PopTime()),
+			"queue", job.GetName(),
+			"payload", IFaceToString(job.Payload()),
+			"pop_time", job.PopTime().String(),
 		)
 	}
 
@@ -326,9 +328,9 @@ func (m *manager) markJobAsFailedIfWillExceedMaxAttempts(job JobIFace, err error
 	if time.Now().Sub(job.PopTime()) >= job.Timeout() {
 		m.logger.Warn(
 			textJobTooLong,
-			zap.String("queue", job.GetName()),
-			zap.Any("payload", job.Payload()),
-			zap.Time("pop_time", job.PopTime()),
+			"queue", job.GetName(),
+			"payload", IFaceToString(job.Payload()),
+			"pop_time", job.PopTime().String(),
 		)
 	}
 
@@ -356,9 +358,9 @@ func (m *manager) failJob(job JobIFace, err error) {
 	// tag log
 	m.logger.Error(
 		textJobFailedLog,
-		zap.String("queue", job.GetName()),
-		zap.Any("payload", job.Payload()),
-		zap.Error(err),
+		"queue", job.GetName(),
+		"payload", IFaceToString(job.Payload()),
+		"error", IFaceToString(err),
 	)
 
 	// -> 3、设置任务执行失败

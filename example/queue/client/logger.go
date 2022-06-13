@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/jjonline/go-lib-backend/queue"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"net"
@@ -10,7 +11,7 @@ import (
 )
 
 // zapLogger init初始化后的内部zapLogger全局句柄
-var zapLogger *zap.Logger
+var zapLogger *queue.Logger
 
 // newZap 初始化一个zapLogger
 func NewZap(logLevel, path string) *zap.Logger {
