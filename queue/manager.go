@@ -1,8 +1,9 @@
+package queue
+
 /*
  * @Time   : 2021/1/16 下午12:30
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import (
 	"context"
@@ -41,7 +42,7 @@ type manager struct {
 	lock             sync.Mutex            // 并发锁
 	doneChan         chan struct{}         // 关闭队列的信号控制chan
 	inShutdown       atomicBool            // 原子态标记：是否处于优雅关闭状态中
-	inWorkingMap     map[string]int64      // 当前正work中的jobID与workerID映射map
+	inWorkingMap     sync.Map              // map[string]int64  当前正work中的jobID与workerID映射map
 	workerStatus     map[int64]*atomicBool // worker工作进程状态标记map
 	jitter           time.Duration         // 循环器抖动间隔
 }
@@ -58,7 +59,7 @@ func newManager(queue QueueIFace, logger Logger, concurrent int64) *manager {
 		concurrent:   concurrent,
 		tasks:        make(map[string]TaskIFace),
 		workerStatus: make(map[int64]*atomicBool, concurrent),
-		inWorkingMap: make(map[string]int64),
+		inWorkingMap: sync.Map{},
 		lock:         sync.Mutex{},
 		jitter:       450 * time.Millisecond,
 	}
@@ -173,8 +174,8 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		// set worker execute is false
 		m.setWorkerStatus(workerID, false)
 
-		// delete in running map
-		delete(m.inWorkingMap, job.Payload().ID)
+		// delete in running map need to use lock
+		m.inWorkingMap.Delete(job.Payload().ID)
 
 		// recovery if panic
 		if err := recover(); err != nil {
@@ -206,7 +207,7 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	}
 
 	// step2、因为没有超时主动退出机制当任务执行超时仍在执行时标记再次延迟
-	if _, exist := m.inWorkingMap[job.Payload().ID]; exist {
+	if _, exist := m.inWorkingMap.Load(job.Payload().ID); exist {
 		m.logger.Warn(
 			ErrAbortForWaitingPrevJobFinish.Error(),
 			"queue", job.GetName(),
@@ -226,8 +227,8 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		return
 	}
 
-	// set in running map
-	m.inWorkingMap[job.Payload().ID] = workerID
+	// set in running map, need to be use lock
+	m.inWorkingMap.Store(job.Payload().ID, workerID)
 
 	// step3、检查任务尝试次数：超限标记任务失败后删除任务，未超限则执行
 	if m.markJobAsFailedIfAlreadyExceedsMaxAttempts(job) {
