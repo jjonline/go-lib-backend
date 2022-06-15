@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/go-redis/redis/v8 v8.8.3
+	github.com/go-stack/stack v1.8.1
 	github.com/google/uuid v1.3.0
 )
 

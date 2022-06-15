@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-stack/stack"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -181,7 +182,7 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 		if err := recover(); err != nil {
 			m.logger.Error(
 				"queue.execute.panic",
-				"stack", "",
+				"stack", stack.Trace().TrimRuntime().String(),
 				"queue", job.GetName(),
 				"worker_id", IFaceToString(workerID),
 				"payload", IFaceToString(job.Payload()),
