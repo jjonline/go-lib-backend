@@ -1,4 +1,4 @@
-module bitbucket.org/tvb/super-updates-lib/robot
+module github.com/jjonline/go-lib-backend/feishu
 
 go 1.18
 
