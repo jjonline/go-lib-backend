@@ -59,7 +59,7 @@ func (s *Robot) Info(ctx context.Context, title, markdownText string, t time.Tim
 		return fmt.Errorf("sign err:%s", err.Error())
 	}
 
-	params := s.buildParams(BgGreen, "Info: "+title, strings.TrimRight(markdownText, "\n")+
+	params := s.buildParams(BgGreen, title, strings.TrimRight(markdownText, "\n")+
 		"\nTime: "+t.In(UTCZone8Location).Format("2006-01-02 15:04:05"))
 	params.Sign = sign
 	params.Timestamp = now
@@ -76,7 +76,7 @@ func (s *Robot) Warning(ctx context.Context, title, markdownText string, t time.
 		return fmt.Errorf("sign err:%s", err.Error())
 	}
 
-	params := s.buildParams(BgYellow, "Warning: "+title, strings.TrimRight(markdownText, "\n")+
+	params := s.buildParams(BgYellow, title, strings.TrimRight(markdownText, "\n")+
 		"\nTime: "+t.In(UTCZone8Location).Format("2006-01-02 15:04:05"))
 	params.Sign = sign
 	params.Timestamp = now
@@ -93,7 +93,7 @@ func (s *Robot) Error(ctx context.Context, title, markdownText string, t time.Ti
 		return fmt.Errorf("sign err:%s", err.Error())
 	}
 
-	params := s.buildParams(BgRed, "Error: "+title, strings.TrimRight(markdownText, "\n")+
+	params := s.buildParams(BgRed, title, strings.TrimRight(markdownText, "\n")+
 		"\nTime: "+t.In(UTCZone8Location).Format("2006-01-02 15:04:05"))
 	params.Sign = sign
 	params.Timestamp = now
