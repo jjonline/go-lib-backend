@@ -39,6 +39,7 @@ type manager struct {
 	logger           Logger                // 实现 Logger 接口的结构体实例的指针对象
 	concurrent       int64                 // 单个队列最大并发worker数
 	tasks            map[string]TaskIFace  // 队列名与任务类实例映射map，interface无需显式指定执指针类型，但实际传参需指针类型
+	priorityTask     map[string]TaskIFace  // 指定的高优先级job任务
 	failedJobHandler FailedJobHandler      // 失败任务[最大尝试次数后仍然尝试失败（Execute返回了Error 或 执行导致panic）的任务]处理器
 	lock             sync.Mutex            // 并发锁
 	doneChan         chan struct{}         // 关闭队列的信号控制chan
@@ -59,6 +60,7 @@ func newManager(queue QueueIFace, logger Logger, concurrent int64) *manager {
 		logger:       logger,
 		concurrent:   concurrent,
 		tasks:        make(map[string]TaskIFace),
+		priorityTask: make(map[string]TaskIFace),
 		workerStatus: make(map[int64]*atomicBool, concurrent),
 		inWorkingMap: sync.Map{},
 		lock:         sync.Mutex{},
@@ -94,6 +96,27 @@ func (m *manager) bootstrap(tasks []TaskIFace) (err error) {
 			return err
 		}
 	}
+	return nil
+}
+
+// setPriorityTask 设置高优先级任务
+func (m *manager) setPriorityTask(task TaskIFace) error {
+	m.lock.Lock()
+
+	// log
+	m.logger.Debug(
+		"setPriorityTask",
+		"name",
+		task.Name(),
+		"max_tries",
+		IFaceToString(task.MaxTries()),
+		"retry_interval",
+		IFaceToString(task.RetryInterval()),
+	)
+
+	m.priorityTask[task.Name()] = task
+	m.lock.Unlock()
+
 	return nil
 }
 
@@ -135,6 +158,15 @@ func (m *manager) looper() {
 	// map的range是无序的，无需再随机pop队列
 	// range本身就是随机的
 	needSleep := true
+
+	// 高优先级任务先被轮询
+	for pName := range m.priorityTask {
+		if job, exist := m.queue.Pop(pName); exist {
+			m.channel <- job // push job to worker for control process
+			needSleep = false
+		}
+	}
+
 	for name := range m.tasks {
 		if job, exist := m.queue.Pop(name); exist {
 			m.channel <- job // push job to worker for control process

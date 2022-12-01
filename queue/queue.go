@@ -181,4 +181,11 @@ func (q *Queue) Size(task TaskIFace) int64 {
 	return q.queue.Size(task.Name())
 }
 
+// SetHighPriorityTask 指定高优先级的Job任务，多次调用可以设置多个高优先级Job任务
+//   - ① 当队列消费者消费速度过慢，任务堆积时被指定的高优先级Job将尽量保障优先执行
+//   - ② 虽然此处可以指定队列job的高优先级执行，但也不保障待执行任务过多堆积时优先级任务一定会被执行，所以高优先级Job不要指定的过多
+func (q *Queue) SetHighPriorityTask(task TaskIFace) error {
+	return q.manager.setPriorityTask(task)
+}
+
 // endregion
