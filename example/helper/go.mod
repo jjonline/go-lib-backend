@@ -1,7 +1,7 @@
 module github.com/jjonline/go-lib-backend/example/helper
 
-go 1.19
+go 1.18
 
-require github.com/jjonline/go-lib-backend/helper v0.0.0-20210720014741-ee748420702a
+require github.com/jjonline/go-lib-backend/helper v0.0.0-20221211141403-531bdbcab3eb
 
 replace github.com/jjonline/go-lib-backend/helper => ../../helper
