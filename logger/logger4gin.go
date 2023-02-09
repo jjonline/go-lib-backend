@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-stack/stack"
 	"go.uber.org/zap"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -69,7 +70,7 @@ func GinRecovery(ctx *gin.Context) {
 }
 
 // GinLogger zap实现的gin-logger日志中间件<gin.HandlerFunc的实现>
-//  - appendHandle 额外补充的自定义添加字段方法，可选参数
+//   - appendHandle 额外补充的自定义添加字段方法，可选参数
 func GinLogger(appendHandle func(ctx *gin.Context) []zap.Field) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		start := time.Now()
@@ -138,7 +139,7 @@ func GinLogHttpFail(ctx *gin.Context, err error) {
 func GinCors(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "*")
 	ctx.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,X-App-Client,X-App-Id,X-Requested-With,Authorization")
+	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,X-App-Client,X-Requested-With,Authorization")
 	ctx.Header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE,PATCH")
 	// REF https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Access-Control-Max-Age
 	ctx.Header("Access-Control-Max-Age", "7200")
@@ -161,8 +162,9 @@ func GinCors(ctx *gin.Context) {
 }
 
 // GinPrintInitRoute 为gin自定义注册路由日志输出
-//  注意：因gin路由注册信息输出只有dev模式才有
-//  若为了全面记录路由注册日志，调用 gin.SetMode 方法代码可写在路由注册之后，但就会出现gin的开发模式提示信息
+//
+//	注意：因gin路由注册信息输出只有dev模式才有
+//	若为了全面记录路由注册日志，调用 gin.SetMode 方法代码可写在路由注册之后，但就会出现gin的开发模式提示信息
 func GinPrintInitRoute(httpMethod, absolutePath, handlerName string, nuHandlers int) {
 	zapLogger.Info(
 		TextGinRouteInit,
@@ -186,14 +188,14 @@ func setRequestID(ctx *gin.Context) string {
 
 // GetRequestID 暴露方法：读取当前请求ID
 func GetRequestID(ctx *gin.Context) string {
-	if req_id, exist := ctx.Get(XRequestID); exist {
-		return req_id.(string)
+	if reqId, exist := ctx.Get(XRequestID); exist {
+		return reqId.(string)
 	}
 	return ""
 }
 
 // GetRequestBody 获取请求body体
-//  - strip 是否要将JSON类型的body体去除反斜杠和大括号，以便于Es等不做深层字段解析而当做一个字符串
+//   - strip 是否要将JSON类型的body体去除反斜杠和大括号，以便于Es等不做深层字段解析而当做一个字符串
 func GetRequestBody(ctx *gin.Context, strip bool) string {
 	bodyData := ""
 
@@ -201,7 +203,7 @@ func GetRequestBody(ctx *gin.Context, strip bool) string {
 	if IsModifyMethod(ctx.Request.Method) {
 		// 判断是否为JSON实体类型<application/json>，仅需要判断content-type包含/json字符串即可
 		if strings.Contains(ctx.ContentType(), "/json") {
-			buf, _ := ioutil.ReadAll(ctx.Request.Body)
+			buf, _ := io.ReadAll(ctx.Request.Body)
 			bodyData = string(buf)
 			_ = ctx.Request.Body.Close()
 			ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf)) // 重要
@@ -222,7 +224,7 @@ func GetRequestBody(ctx *gin.Context, strip bool) string {
 }
 
 // IsModifyMethod 检查当前请求方式否为修改类型
-//  - 即判断请求是否为post、put、patch、delete
+//   - 即判断请求是否为post、put、patch、delete
 func IsModifyMethod(method string) bool {
 	return method == http.MethodPost ||
 		method == http.MethodPut ||

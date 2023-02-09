@@ -1,8 +1,8 @@
 package logger
 
 import (
-	"time"
 	"go.uber.org/zap"
+	"time"
 )
 
 // DBLogger gorm日志记录器
@@ -27,14 +27,14 @@ func (l DBLogger) Print(values ...interface{}) {
 			zap.Any("values", values[4]),
 			zap.Duration("duration", values[2].(time.Duration)),
 			zap.Int64("rows", values[5].(int64)),
-			zap.String("source", values[1].(string)), // if AddCallerSkip(6) is well defined, we can safely remove this field
+			zap.String("source", values[1].(string)), // if AddCallerSkip(6) is well-defined, we can safely remove this field
 		)
 	default:
 		zapLogger.Info(
 			"gorm.debug.other",
 			zap.String("module", "sql"),
 			zap.Any("values", values[2:]),
-			zap.String("source", values[1].(string)), // if AddCallerSkip(6) is well defined, we can safely remove this field
+			zap.String("source", values[1].(string)), // if AddCallerSkip(6) is well-defined, we can safely remove this field
 		)
 	}
 }
