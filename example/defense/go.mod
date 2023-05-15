@@ -1,6 +1,6 @@
 module github.com/jjonline/go-lib-backend/example/defense
 
-go 1.16
+go 1.18
 
 require (
 	github.com/go-redis/redis/v7 v7.4.1

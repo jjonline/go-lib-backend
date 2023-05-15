@@ -1,6 +1,6 @@
 module github.com/jjonline/go-lib-backend/example/queue
 
-go 1.15
+go 1.18
 
 require (
 	github.com/go-redis/redis/v8 v8.8.3
