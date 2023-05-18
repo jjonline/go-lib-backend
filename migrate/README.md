@@ -6,10 +6,13 @@
 
 ## 二、使用示例
 
+> 注意：使用`go-sql-driver/mysql`驱动时，DSN格式中请携带参数`?parseTime=true`
+
 ````
 // 实例化迁移工具
 migration := migrate.New(migrate.Config{
     Dir:       "migrations", // 迁移文件的存储目录，相对于main包或binary可执行文件
+    Fs:        migrations.File // 迁移文件的存储目录embed嵌入的FS只读文件系统变量
     TableName: "migrations", // 迁移工具本身所依赖的Db数据表表名
     DB:        db,           // *sql.DB 对象实例
 })
@@ -25,6 +28,19 @@ migration.ExecUp()
 
 // 回滚迁移
 migration.ExecDown("给空字符串则回滚最后1条，给定迁移文件名称则仅回滚指定名称的迁移")
+````
+
+> 请注意：go1.16之后go原生支持embed嵌入迁移文件，一个二进制文件可内嵌包含所有迁移文件，
+> `migrate.Config.Dir`目录下自主使用embed生成一个`fs.FS`的嵌入变量，传参给`migrate.Config.Fs`即可。
+
+嵌入迁移文件至二进制可执行程序的嵌入写法参考，或参考：[migrate example](https://github.com/jjonline/go-lib-backend/tree/master/example/migrate)
+````
+package migrations
+
+import "embed"
+
+//go:embed *.sql
+var Sql embed.FS
 ````
 
 migrate实例对象提供的方法可以嵌入到cli命令行入口，通过不同的参数执行不同的迁移命令
