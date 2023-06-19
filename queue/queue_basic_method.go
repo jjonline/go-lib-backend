@@ -1,8 +1,9 @@
+package queue
+
 /*
  * @Time   : 2021/1/20 下午10:10
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import (
 	"encoding/json"

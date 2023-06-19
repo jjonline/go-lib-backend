@@ -1,8 +1,9 @@
+package queue
+
 /*
  * @Time   : 2021/1/19 下午20:00
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import "github.com/go-redis/redis/v8"
 

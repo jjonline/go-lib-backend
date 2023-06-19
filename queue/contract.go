@@ -122,7 +122,7 @@ type Logger interface {
 // region 定义任务传参实体RawBody
 
 // RawBody 队列execute执行时传递给执行方法的参数Raw结构：job任务参数的包装器
-//  - ID 内部标记队列任务的唯一ID，使用UUID生成
+//   - ID 内部标记队列任务的唯一ID，使用UUID生成
 type RawBody struct {
 	queue   string // 队列名
 	payload []byte // 调度队列塞入的数据体
@@ -130,35 +130,39 @@ type RawBody struct {
 }
 
 // Int 任务参数数据转int
-//  如果投递的任务参数为int型标量参数，使用该方法获取传参
+//
+//	如果投递的任务参数为int型标量参数，使用该方法获取传参
 func (rawBody *RawBody) Int() int {
 	i, _ := strconv.Atoi(string(rawBody.payload))
 	return i
 }
 
 // String 任务参数转string
-//  如果投递的任务参数为string型标量参数，使用该方法获取传参
+//
+//	如果投递的任务参数为string型标量参数，使用该方法获取传参
 func (rawBody *RawBody) String() string {
 	return string(rawBody.payload)
 }
 
 // Bytes 任务参数转[]byte
-//  如果投递的任务参数为[]byte型标量参数，使用该方法获取传参
+//
+//	如果投递的任务参数为[]byte型标量参数，使用该方法获取传参
 func (rawBody *RawBody) Bytes() []byte {
 	return rawBody.payload
 }
 
 // Int64 任务参数转int64
-//  如果投递的任务参数为int64型标量参数，使用该方法获取传参
+//
+//	如果投递的任务参数为int64型标量参数，使用该方法获取传参
 func (rawBody *RawBody) Int64() int64 {
 	i64, _ := strconv.ParseInt(string(rawBody.payload), 10, 64)
 	return i64
 }
 
 // Unmarshal 任务参数Unmarshal为投递调度任务时的结构类型
-//  - 传参为基础类型的不要使用该方法转换而是使用 Int String Bytes 等method
-//  - result 具体类型的指针引用变量，转换成功将自动填充
-//  - 转换成功填充result返回nil，转换失败时返回error
+//   - 传参为基础类型的不要使用该方法转换而是使用 Int String Bytes 等method
+//   - result 具体类型的指针引用变量，转换成功将自动填充
+//   - 转换成功填充result返回nil，转换失败时返回error
 func (rawBody *RawBody) Unmarshal(result interface{}) error {
 	return json.Unmarshal(rawBody.payload, result)
 }
@@ -199,6 +203,7 @@ type TaskIFace interface {
 	MaxTries() int64                                 // 定义队列任务最大尝试次数：任务执行的最大尝试次数
 	RetryInterval() int64                            // 定义队列任务最大尝试间隔：当任务执行失败后再次尝试执行的间隔时长，单位：秒
 	Timeout() time.Duration                          // 定义队列超时方法：返回超时时长
+	RateAllow() bool                                 // 定义队列限流方法：1秒内会多次尝试去执行，返回true则执行返回false则不执行留待下一轮
 	Name() string                                    // 定义队列名称方法：返回队列名称
 	Execute(ctx context.Context, job *RawBody) error // 定义队列任务执行时的方法：执行成功返回nil，执行失败返回error
 }
@@ -211,7 +216,7 @@ func (task *DefaultTaskSetting) MaxTries() int64 {
 	return DefaultMaxTries
 }
 
-// RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
+// RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认60秒后重试
 func (task *DefaultTaskSetting) RetryInterval() int64 {
 	return DefaultRetryInterval
 }
@@ -219,6 +224,11 @@ func (task *DefaultTaskSetting) RetryInterval() int64 {
 // Timeout 任务最大执行超时时长：默认超时时长为900秒
 func (task *DefaultTaskSetting) Timeout() time.Duration {
 	return DefaultMaxExecuteDuration
+}
+
+// RateAllow 任务限流方法，默认不限流
+func (task *DefaultTaskSetting) RateAllow() bool {
+	return true
 }
 
 // DefaultTaskSettingWithoutTimeout 默认task设置struct：实现默认的最大尝试次数、尝试间隔时长、最大执行时长
@@ -232,6 +242,11 @@ func (task *DefaultTaskSettingWithoutTimeout) MaxTries() int64 {
 // RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
 func (task *DefaultTaskSettingWithoutTimeout) RetryInterval() int64 {
 	return DefaultRetryInterval
+}
+
+// RateAllow 任务限流方法，默认不限流
+func (task *DefaultTaskSettingWithoutTimeout) RateAllow() bool {
+	return true
 }
 
 // jobProperty 公共的job实现类内部属性

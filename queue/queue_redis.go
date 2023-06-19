@@ -1,8 +1,9 @@
+package queue
+
 /*
  * @Time   : 2021/1/16 上午11:20
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import (
 	"context"
@@ -157,9 +158,10 @@ func (r *redisQueue) SetConnection(connection interface{}) (err error) {
 // GetConnection
 // 获取redis队列的连接器：redis client句柄指针（interface）使用前需显式转换
 // example:
-// 		conn, _ := r.GetConnection()
-// 		client := conn.(*redis.Client)
-//		client.Set("key", "values")
+//
+//	conn, _ := r.GetConnection()
+//	client := conn.(*redis.Client)
+//	client.Set("key", "values")
 func (r *redisQueue) GetConnection() (connection interface{}, err error) {
 	if r.connection == nil {
 		return nil, errors.New("null pointer connection instance")

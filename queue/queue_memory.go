@@ -1,8 +1,9 @@
+package queue
+
 /*
  * @Time   : 2021/1/16 上午11:20
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import (
 	"container/list"

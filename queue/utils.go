@@ -1,13 +1,14 @@
+package queue
+
 /*
  * @Time   : 2021/1/21 下午10:10
  * @Email  : jjonline@jjonline.cn
  */
-package queue
 
 import (
 	"encoding/json"
-	"strconv"
 	"github.com/google/uuid"
+	"strconv"
 	"time"
 )
 

@@ -160,17 +160,23 @@ func (m *manager) looper() {
 	needSleep := true
 
 	// 高优先级任务先被轮询
-	for pName := range m.priorityTasks {
-		if job, exist := m.queue.Pop(pName); exist {
-			m.channel <- job // push job to worker for control process
-			needSleep = false
+	for pName, pTask := range m.priorityTasks {
+		// 速率控制--限流支持，自主在任务类里实现RateAllow即可
+		if pTask.RateAllow() {
+			if job, exist := m.queue.Pop(pName); exist {
+				m.channel <- job // push job to worker for control process
+				needSleep = false
+			}
 		}
 	}
 
-	for name := range m.tasks {
-		if job, exist := m.queue.Pop(name); exist {
-			m.channel <- job // push job to worker for control process
-			needSleep = false
+	for name, task := range m.tasks {
+		// 速率控制--限流支持，自主在任务类里实现RateAllow即可
+		if task.RateAllow() {
+			if job, exist := m.queue.Pop(name); exist {
+				m.channel <- job // push job to worker for control process
+				needSleep = false
+			}
 		}
 	}
 
