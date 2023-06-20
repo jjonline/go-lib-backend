@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-	fmt.Println(helper.RootPath())
-	fmt.Println(helper.Path("/test"))
-	fmt.Println(helper.Path("test"))
-	fmt.Println(helper.Path("test/"))
-	fmt.Println(helper.Path("./test/"))
+	fmt.Println(part.RootPath())
+	fmt.Println(part.Path("/test"))
+	fmt.Println(part.Path("test"))
+	fmt.Println(part.Path("test/"))
+	fmt.Println(part.Path("./test/"))
 }

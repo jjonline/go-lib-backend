@@ -6,7 +6,6 @@ import (
 	"github.com/go-stack/stack"
 	"go.uber.org/zap"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -206,7 +205,7 @@ func GetRequestBody(ctx *gin.Context, strip bool) string {
 			buf, _ := io.ReadAll(ctx.Request.Body)
 			bodyData = string(buf)
 			_ = ctx.Request.Body.Close()
-			ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(buf)) // 重要
+			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(buf)) // 重要
 
 			// strip json `\{}` to ignore transfer JSON struct
 			if strip {
