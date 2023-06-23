@@ -11,13 +11,13 @@ import (
 //   - 调用方只关注响应码为200的场景时，直接判断err是否为nil即可
 //     result, err := client.JSON(xx,xx,xx)
 //     if err != nil {
-//     	 return
+//     return
 //     }
 //     // your code // http响应码为200时的逻辑
-//	 ------------------------------------------------------------------------
+//     ------------------------------------------------------------------------
 //   - 调用方若需处理非200时返回值，如下处理：
 //     if err != nil && errors.Is(err, guzzle.ErrResponseNotOK) {
-//       // http响应码非200，此时result也是有值的
+//     // http响应码非200，此时result也是有值的
 //     }
 var ErrResponseNotOK = errors.New("failed response status code is not equal 200")
 
@@ -219,7 +219,7 @@ func (c *Client) DeleteJSON(ctx context.Context, url string, body interface{}, h
 	return c.JSON(ctx, http.MethodDelete, url, ToJsonReader(body), head)
 }
 
-// PostForm 执行 post 请求，采用 form 格式
+// PostForm 执行 post 请求，采用 application/x-www-form-urlencoded 格式
 //   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
@@ -227,7 +227,7 @@ func (c *Client) PostForm(ctx context.Context, url string, body interface{}, hea
 	return c.Form(ctx, http.MethodPost, url, ToFormReader(body), head)
 }
 
-// PutForm 执行 put 请求，采用 form 格式
+// PutForm 执行 put 请求，采用 application/x-www-form-urlencoded 格式
 //   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
@@ -235,7 +235,7 @@ func (c *Client) PutForm(ctx context.Context, url string, body interface{}, head
 	return c.Form(ctx, http.MethodPut, url, ToFormReader(body), head)
 }
 
-// PatchForm 执行 patch 请求，采用 form 格式
+// PatchForm 执行 patch 请求，采用 application/x-www-form-urlencoded 格式
 //   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
@@ -243,10 +243,29 @@ func (c *Client) PatchForm(ctx context.Context, url string, body interface{}, he
 	return c.Form(ctx, http.MethodPatch, url, ToFormReader(body), head)
 }
 
-// DeleteForm 执行 delete 请求，采用 form 格式
+// DeleteForm 执行 delete 请求，采用 application/x-www-form-urlencoded 格式
 //   - url    请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
 //   - body   请求body体，支持：字符串、字节数组等；请传 guzzle.ToFormReader 支持的参数类型
 //   - head   请求header部分键值对，无传nil
 func (c *Client) DeleteForm(ctx context.Context, url string, body interface{}, head map[string]string) (Result, error) {
 	return c.Form(ctx, http.MethodDelete, url, ToFormReader(body), head)
+}
+
+// PostFormData 执行 post 请求，采用 multipart/form-data 格式
+//   - url         请求完整URL<可使用 guzzle.ToQueryURL 构造url里的query查询串>
+//   - body        请求body体 请使用 multipart.NewWriter 构造 io.Reader 类型
+//   - contentType 请求类型，请使用 构造body体的 multipart.NewWriter 的FormDataContentType()方法生成
+//   - head        请求header部分键值对，无传nil
+func (c *Client) PostFormData(ctx context.Context, url string, body io.Reader, contentType string, head map[string]string) (Result, error) {
+	req, err := c.NewRequest(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return Result{}, err
+	}
+
+	req.Header.Set("Content-Type", contentType)
+	for key, val := range head {
+		req.Header.Add(key, val)
+	}
+
+	return c.Do(req)
 }
