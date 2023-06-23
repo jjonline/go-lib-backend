@@ -256,6 +256,20 @@ func (c *Client) DeleteForm(ctx context.Context, url string, body interface{}, h
 //   - body        请求body体 请使用 multipart.NewWriter 构造 io.Reader 类型
 //   - contentType 请求类型，请使用 构造body体的 multipart.NewWriter 的FormDataContentType()方法生成
 //   - head        请求header部分键值对，无传nil
+//
+// make body param example
+//
+// ----
+//
+//	file, _ := os.Open(localPath) // open file
+//	var body = bytes.NewBuffer(nil) // make buffer io.Reader
+//	writer := multipart.NewWriter(body) // make multipart/form-data object
+//	part, _ := writer.CreateFormFile("file", filepath.Base(urlOrLocalFilePath)) // set file filed named `file`
+//	_ = writer.WriteField("key", "value") // add new key/value pair field
+//	_ = writer.Close() // close to write all buffer, then body param named `body` can usd
+//	contentType := writer.FormDataContentType() // make contentType
+//
+// ----
 func (c *Client) PostFormData(ctx context.Context, url string, body io.Reader, contentType string, head map[string]string) (Result, error) {
 	req, err := c.NewRequest(ctx, http.MethodPost, url, body)
 	if err != nil {
