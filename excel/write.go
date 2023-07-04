@@ -177,10 +177,10 @@ func (e *Excel) SetSheet(useStreamWriter bool) error {
 		if v.SheetName != "" {
 			sheetName = v.SheetName
 		}
-		index := e.File.GetSheetIndex(sheetName)
+		index, _ := e.File.GetSheetIndex(sheetName)
 		// 不存在则创建
 		if index == -1 {
-			index = e.File.NewSheet(sheetName)
+			index, _ = e.File.NewSheet(sheetName)
 		}
 		// 更新sheet名称
 		e.exportInfo.Sheets[k].SheetName = sheetName
