@@ -14,8 +14,8 @@ var (
 	messageURL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send"
 )
 
-// WeWork 企业微信机器人结构
-type WeWork struct {
+// Client 企业微信机器人结构
+type Client struct {
 	key    string
 	client *guzzle.Client
 	enable bool
@@ -39,8 +39,8 @@ type Article struct {
 //   - key    企业微信机器人key，企业微信机器人设置时 Webhook 的URL里的key值
 //   - enable 开关，true则真实发送 false则不真实发送<不用更改注释调用代码仅初始化时设置该值即可关闭真实发送逻辑>
 //   - client 自定义 *http.Client 可自主控制http请求客户端，给 nil 则使用默认
-func New(key string, enable bool, client *http.Client) *WeWork {
-	return &WeWork{
+func New(key string, enable bool, client *http.Client) *Client {
+	return &Client{
 		key:    key,
 		client: guzzle.New(client),
 		enable: enable,
@@ -48,11 +48,11 @@ func New(key string, enable bool, client *http.Client) *WeWork {
 }
 
 // send 底层执行发送方法
-func (w *WeWork) send(message interface{}) error {
+func (c *Client) send(message interface{}) error {
 	params := url.Values{}
-	params.Set("key", w.key)
+	params.Set("key", c.key)
 
-	res, err := w.client.PostJSON(context.TODO(), guzzle.ToQueryURL(messageURL, params), message, nil)
+	res, err := c.client.PostJSON(context.TODO(), guzzle.ToQueryURL(messageURL, params), message, nil)
 	if err != nil {
 		return err
 	}
@@ -74,8 +74,8 @@ func (w *WeWork) send(message interface{}) error {
 //   - msg       文本消息内容，不宜过长，最大2048字节
 //   - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
 //   - atUserIds 需要 at 的人的企业微信用户id，不需要@任何人时给nil，要@全员使用 @all 即可
-func (w *WeWork) Text(msg string, atMobiles []string, atUserIds []string) error {
-	if !w.enable {
+func (c *Client) Text(msg string, atMobiles []string, atUserIds []string) error {
+	if !c.enable {
 		return nil
 	}
 
@@ -87,13 +87,13 @@ func (w *WeWork) Text(msg string, atMobiles []string, atUserIds []string) error 
 			"mentioned_mobile_list": atMobiles,
 		},
 	}
-	return w.send(message)
+	return c.send(message)
 }
 
 // Markdown 发送markdown信息
 //   - markDownText markdown格式文本
-func (w *WeWork) Markdown(markDownText string) error {
-	if !w.enable {
+func (c *Client) Markdown(markDownText string) error {
+	if !c.enable {
 		return nil
 	}
 	message := map[string]interface{}{
@@ -102,14 +102,14 @@ func (w *WeWork) Markdown(markDownText string) error {
 			"content": markDownText,
 		},
 	}
-	return w.send(message)
+	return c.send(message)
 }
 
 // Image 发送图片信息
 //   - base64image 图片base64编码后字符串
 //   - imageMd5    图片原文件md5
-func (w *WeWork) Image(base64image, imageMd5 string) error {
-	if !w.enable {
+func (c *Client) Image(base64image, imageMd5 string) error {
+	if !c.enable {
 		return nil
 	}
 	message := map[string]interface{}{
@@ -119,13 +119,13 @@ func (w *WeWork) Image(base64image, imageMd5 string) error {
 			"base64": imageMd5,
 		},
 	}
-	return w.send(message)
+	return c.send(message)
 }
 
 // News 发送多图文混合类型信息
 //   - article 多条图文切片，1到8条图文--即最多8条
-func (w *WeWork) News(article []Article) error {
-	if !w.enable {
+func (c *Client) News(article []Article) error {
+	if !c.enable {
 		return nil
 	}
 	message := map[string]interface{}{
@@ -134,5 +134,5 @@ func (w *WeWork) News(article []Article) error {
 			"articles": article,
 		},
 	}
-	return w.send(message)
+	return c.send(message)
 }
