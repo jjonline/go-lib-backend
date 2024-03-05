@@ -1,5 +1,10 @@
 # go常用包mod库
 
+## 零、常用库
+
+* 类型转换 [https://github.com/spf13/cast](https://github.com/spf13/cast)
+* 
+
 ## 一、项目说明
 
 本仓库收录日常使用中提炼的包，启用go mod，使用单仓库多子包模式。
