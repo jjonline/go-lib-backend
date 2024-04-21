@@ -1,2 +1,3 @@
 github.com/jjonline/go-lib-backend/guzzle v0.0.0-20230825100013-7c755c8ec25f h1:dtYjEQETtGMy1C5hBCWqjr4UpRXX4EpWKh4KV2kR9XE=
 github.com/jjonline/go-lib-backend/guzzle v0.0.0-20230825100013-7c755c8ec25f/go.mod h1:xxOtsqwcygMt1OTt3o8MoQ72m//O+YFeSbGeP2sGLVI=
+github.com/jjonline/go-lib-backend/guzzle v0.0.0-20231009070051-6924b6ae7d69/go.mod h1:xxOtsqwcygMt1OTt3o8MoQ72m//O+YFeSbGeP2sGLVI=

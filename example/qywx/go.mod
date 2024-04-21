@@ -4,6 +4,6 @@ go 1.18
 
 require github.com/jjonline/go-lib-backend/qywx v0.0.0-20210720014741-ee748420702a
 
-require github.com/jjonline/go-lib-backend/guzzle v0.0.0-20230825100013-7c755c8ec25f // indirect
+require github.com/jjonline/go-lib-backend/guzzle v0.0.0-20231009070051-6924b6ae7d69 // indirect
 
 replace github.com/jjonline/go-lib-backend/qywx => ../../qywx
