@@ -36,10 +36,10 @@ var (
 )
 
 // New 实例化消息发送对象
-//  - token  飞书access_token，飞书机器人设置时 Webhook 的URL里的hook后方UUID形式的值
-//  - secret 飞书secret，飞书机器人设置时 启用加签获得的秘钥令牌
-//  - enable 开关，true则真实发送 false则不真实发送<不用更改注释调用代码仅初始化时设置该值即可关闭真实发送逻辑>
-//  - client 自定义 *http.Client 可自主控制http请求客户端，给 nil 不则使用默认
+//   - token  飞书access_token，飞书机器人设置时 Webhook 的URL里的hook后方UUID形式的值
+//   - secret 飞书secret，飞书机器人设置时 启用加签获得的秘钥令牌
+//   - enable 开关，true则真实发送 false则不真实发送<不用更改注释调用代码仅初始化时设置该值即可关闭真实发送逻辑>
+//   - client 自定义 *http.Client 可自主控制http请求客户端，给 nil 不则使用默认
 func New(token, secret string, enable bool, httpClient *http.Client) *Robot {
 	return &Robot{
 		token:  token,
