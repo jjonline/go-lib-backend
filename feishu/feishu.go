@@ -44,7 +44,7 @@ func New(token, secret string, enable bool, httpClient *http.Client) *Robot {
 	return &Robot{
 		token:  token,
 		secret: secret,
-		client: guzzle.New(httpClient),
+		client: guzzle.New(httpClient, nil),
 		enable: enable,
 	}
 }

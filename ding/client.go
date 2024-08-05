@@ -26,8 +26,8 @@ type dingResponse struct {
 }
 
 // Ding 钉钉机器人消息发送客户端
-//  - ① 每个钉钉机器人每分钟最多发送20条。如果超过20条，会限流10分钟
-//  - ② 支持 文本 (text)、链接 (link)、markdown(markdown)、ActionCard、FeedCard消息类型
+//   - ① 每个钉钉机器人每分钟最多发送20条。如果超过20条，会限流10分钟
+//   - ② 支持 文本 (text)、链接 (link)、markdown(markdown)、ActionCard、FeedCard消息类型
 type Ding struct {
 	token  string
 	secret string
@@ -49,15 +49,15 @@ type Feed struct {
 }
 
 // New 创建钉钉客户端
-//  - token  钉钉access_token，钉钉机器人设置时 Webhook 的URL里的access_token值
-//  - secret 钉钉secret，钉钉机器人设置时 启用加签获得以 SEC 开头的秘钥令牌
-//  - enable 开关，true则真实发送 false则不真实发送<不用更改注释调用代码仅初始化时设置该值即可关闭真实发送逻辑>
-//  - client 自定义 *http.Client 可自主控制http请求客户端，给 nil 不则使用默认
+//   - token  钉钉access_token，钉钉机器人设置时 Webhook 的URL里的access_token值
+//   - secret 钉钉secret，钉钉机器人设置时 启用加签获得以 SEC 开头的秘钥令牌
+//   - enable 开关，true则真实发送 false则不真实发送<不用更改注释调用代码仅初始化时设置该值即可关闭真实发送逻辑>
+//   - client 自定义 *http.Client 可自主控制http请求客户端，给 nil 不则使用默认
 func New(token, secret string, enable bool, client *http.Client) *Ding {
 	return &Ding{
 		token:  token,
 		secret: secret,
-		client: guzzle.New(client),
+		client: guzzle.New(client, nil),
 		enable: enable,
 	}
 }
@@ -98,9 +98,9 @@ func (d *Ding) send(message interface{}) error {
 }
 
 // Text 发送文本信息
-//  - msg       文本消息内容，不宜过长
-//  - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
-//  - isAtAll   是否要 at 全员
+//   - msg       文本消息内容，不宜过长
+//   - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
+//   - isAtAll   是否要 at 全员
 func (d *Ding) Text(msg string, atMobiles []string, isAtAll bool) error {
 	if !d.enable {
 		return nil
@@ -119,31 +119,33 @@ func (d *Ding) Text(msg string, atMobiles []string, isAtAll bool) error {
 }
 
 // Markdown 发送markdown信息
-//  - title     MD格式消息的标题，会以 ## 即h2形式显示在首行
-//  - msg       MD的内容<注意使用MarkDown格式，支持链接、图片>
-//  - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
-//  - isAtAll   是否要 at 全员
-//  支持的MD语法见：https://developers.dingtalk.com/document/app/custom-robot-access#section-e4x-4y8-9k0
-// 		例子1：
-//      var account = "acc"
-//      var msg = "login use mobile"
-//      var time = "2021-07-23 14:48:44"
-//      msg = fmt.Sprintf("> Account: %s  \n> Msg: %s  \n> Time:  %s \n", account, msg, time)
-//      c.Markdown("login info", msg, nil, false)
+//   - title     MD格式消息的标题，会以 ## 即h2形式显示在首行
+//   - msg       MD的内容<注意使用MarkDown格式，支持链接、图片>
+//   - atMobiles 需要 at 的人的手机号，不需要@任何人时给nil
+//   - isAtAll   是否要 at 全员
+//     支持的MD语法见：https://developers.dingtalk.com/document/app/custom-robot-access#section-e4x-4y8-9k0
+//     例子1：
+//     var account = "acc"
+//     var msg = "login use mobile"
+//     var time = "2021-07-23 14:48:44"
+//     msg = fmt.Sprintf("> Account: %s  \n> Msg: %s  \n> Time:  %s \n", account, msg, time)
+//     c.Markdown("login info", msg, nil, false)
+//
 // --------------------------------------------------------------------------------------------
-//		例子2：
-//      msg := []string{
-//          "## panic",
-//          "> Env: " + conf.Config.Server.Env,
-//          "> Code: " + strconv.Itoa(code),
-//          "> Msg: " + message,
-//          "> ReqID: " + utils.IFaceToString(reqID),
-//          "> Url: " + ctx.Request.URL.String(),
-//          "> Method: " + ctx.Request.Method,
-//          "> Stack：" + stack,
-//      }
-//      msg := strings.Join(msg, "  \n")
-//      c.Markdown("", msg, nil, false)
+//
+//			例子2：
+//	     msg := []string{
+//	         "## panic",
+//	         "> Env: " + conf.Config.Server.Env,
+//	         "> Code: " + strconv.Itoa(code),
+//	         "> Msg: " + message,
+//	         "> ReqID: " + utils.IFaceToString(reqID),
+//	         "> Url: " + ctx.Request.URL.String(),
+//	         "> Method: " + ctx.Request.Method,
+//	         "> Stack：" + stack,
+//	     }
+//	     msg := strings.Join(msg, "  \n")
+//	     c.Markdown("", msg, nil, false)
 func (d *Ding) Markdown(title, msg string, atMobiles []string, isAtAll bool) error {
 	if !d.enable {
 		return nil
@@ -163,10 +165,10 @@ func (d *Ding) Markdown(title, msg string, atMobiles []string, isAtAll bool) err
 }
 
 // Link 发送卡片链接信息
-//  - title     卡片消息的标题
-//  - msg       卡片消息的正文
-//  - msgURL    卡片消息被点击后打开的URL
-//  - picURL    卡片消息的封面图<没有图片可传空字符串>
+//   - title     卡片消息的标题
+//   - msg       卡片消息的正文
+//   - msgURL    卡片消息被点击后打开的URL
+//   - picURL    卡片消息的封面图<没有图片可传空字符串>
 func (d *Ding) Link(title, msg, msgURL, picURL string) error {
 	if !d.enable {
 		return nil
@@ -184,10 +186,10 @@ func (d *Ding) Link(title, msg, msgURL, picURL string) error {
 }
 
 // ActionCard 发送只有一个按钮的整体跳转类型单个卡片消息
-//  - title       卡片消息的标题
-//  - msg         卡片消息的正文<支持MarkDown格式>
-//  - btnText     卡片消息按钮上的文字
-//  - btnURL      卡片消息按钮（其实是整个卡片）被点击后打开的URL
+//   - title       卡片消息的标题
+//   - msg         卡片消息的正文<支持MarkDown格式>
+//   - btnText     卡片消息按钮上的文字
+//   - btnURL      卡片消息按钮（其实是整个卡片）被点击后打开的URL
 func (d *Ding) ActionCard(title, msg, btnText, btnURL string) error {
 	if !d.enable {
 		return nil
@@ -206,10 +208,10 @@ func (d *Ding) ActionCard(title, msg, btnText, btnURL string) error {
 }
 
 // ActionCardWithMultiBtn 发送有多个按钮的单个卡片消息
-//  - title         卡片消息的标题
-//  - msg           卡片消息的正文<支持MarkDown格式>
-//  - btn           Btn 切片 卡片消息多个按钮定义
-//  - isBtnVertical 多个按钮连接是否垂直排列<即多个按钮是否从上至下依次排列> true垂直 false水平
+//   - title         卡片消息的标题
+//   - msg           卡片消息的正文<支持MarkDown格式>
+//   - btn           Btn 切片 卡片消息多个按钮定义
+//   - isBtnVertical 多个按钮连接是否垂直排列<即多个按钮是否从上至下依次排列> true垂直 false水平
 func (d *Ding) ActionCardWithMultiBtn(title, msg string, btn []Btn, isBtnVertical bool) error {
 	if !d.enable || btn == nil {
 		return nil
