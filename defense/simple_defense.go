@@ -43,7 +43,7 @@ type SimpleDefense struct {
 }
 
 // New 创建一个简单实现的防暴力破解实例
-// @param redis go-redis/redis v7 对象示例
+// @param redis go-redis/redis v8 对象示例
 // @param defenseDuration 默认防御间隔时长设置，譬如：1分钟内最大尝试次数不得超过5次，此处传值 1 * time.Minute
 // @param defenseTimes    默认防御间隔次数设置，譬如：1分钟内最大尝试次数不得超过5次，此处传值 5
 func New(redis *redis.Client, defenseDuration time.Duration, defenseTimes int64) *SimpleDefense {
@@ -72,7 +72,7 @@ func (s *SimpleDefense) DefenseCustom(defenseKey string, defenseDuration time.Du
 	ctx := context.TODO()
 	// 没有这个key，设置key并返回
 	res := s.redis.Get(ctx, defenseKey)
-	if res.Err() == redis.Nil {
+	if errors.Is(res.Err(), redis.Nil) {
 		s.redis.Set(ctx, defenseKey, 1, defenseDuration)
 		return nil
 	}
@@ -98,4 +98,20 @@ func (s *SimpleDefense) DefenseCustom(defenseKey string, defenseDuration time.Du
 // Release 释放指定防御
 func (s *SimpleDefense) Release(defenseKey string) {
 	_ = s.redis.Del(context.TODO(), defenseKey)
+}
+
+// GetHits 获取已命中次数
+func (s *SimpleDefense) GetHits(defenseKey string) int64 {
+	var (
+		ctx = context.TODO()
+		res = s.redis.Get(ctx, defenseKey)
+	)
+
+	// 尝试读取转换已有次数出错，返回拦截状态
+	tryTimes, err := res.Int64()
+	if err != nil {
+		return 0
+	}
+
+	return tryTimes
 }
