@@ -169,6 +169,21 @@ func (c *Chrome) SetFromUA(userAgentFrom string) *Chrome {
 	return c
 }
 
+// OpenChrome 打开chrome并初始化各参数
+func (c *Chrome) OpenChrome() {
+	c.openChrome()
+}
+
+// InitContext 手动初始化控制器context，方便需要Execute之前获取ctx场景
+func (c *Chrome) InitContext(timeout ...time.Duration) {
+	c.initContext(timeout...)
+}
+
+// CloseChrome context形式关闭chrome
+func (c *Chrome) CloseChrome() {
+	c.closeChrome()
+}
+
 // Execute 执行任务方法抽象
 //   - target   打开的网页URL
 //   - node     打开网页指标元素ID，以等待网页已经渲染完毕
@@ -231,13 +246,7 @@ func (c *Chrome) Execute(target, node string, task chromedp.Tasks, timeout ...ti
 	// 构造context
 	// +++++++++++++++++++++++
 	if nil == c.Ctx {
-		if len(timeout) <= 0 || 0 == timeout[0] {
-			// 构造无超时时长的context
-			c.makeCancelContext()
-		} else {
-			// 构造指定超时时长的context
-			c.makeTimeoutContext(timeout[0])
-		}
+		c.initContext(timeout...)
 	}
 
 	// +++++++++++++++++++++++
@@ -256,13 +265,31 @@ func (c *Chrome) Execute(target, node string, task chromedp.Tasks, timeout ...ti
 	return html, resp, err
 }
 
-// CloseChrome context形式关闭chrome
-func (c *Chrome) CloseChrome() {
-	c.closeChrome()
+// initContext 初始化控制器context，方便需要再Execute之前获取ctx场景
+func (c *Chrome) initContext(timeout ...time.Duration) {
+	if c.instanceContext == nil {
+		c.openChrome()
+	}
+
+	if c.Ctx != nil {
+		return
+	}
+
+	if len(timeout) <= 0 || 0 == timeout[0] {
+		// 构造无超时时长的context
+		c.makeCancelContext()
+	} else {
+		// 构造指定超时时长的context
+		c.makeTimeoutContext(timeout[0])
+	}
 }
 
 // openChrome 初始化启动chrome
 func (c *Chrome) openChrome() *Chrome {
+	if c.instanceContext != nil {
+		return c
+	}
+
 	// 参数配置
 	options := []chromedp.ExecAllocatorOption{
 		// 是否headless模式--true则没有浏览器界面 false则有一个浏览器界面
