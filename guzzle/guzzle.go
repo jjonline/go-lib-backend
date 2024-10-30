@@ -303,13 +303,17 @@ func (c *Client) Form(ctx context.Context, method, url string, body io.Reader, h
 //
 // ----
 //
-//	file, _ := os.Open(localPath) // open file
-//	var body = bytes.NewBuffer(nil) // make buffer io.Reader
-//	writer := multipart.NewWriter(body) // make multipart/form-data object
-//	part, _ := writer.CreateFormFile("file", filepath.Base(urlOrLocalFilePath)) // set file filed named `file`
-//	_ = writer.WriteField("key", "value") // add new key/value pair field
-//	_ = writer.Close() // close to write all buffer, then body param named `body` can usd
-//	contentType := writer.FormDataContentType() // make contentType
+//	stream, err := os.ReadFile(filePath)
+//	writer = multipart.NewWriter(body) // make writer
+//	_ = writer.WriteField("fieldName1", "you field val") // set key/value
+//	_ = writer.WriteField("fieldName2", "you field va2")
+//	binWriter, err := writer.CreateFormFile("shard_file", "blob.mp4") // set uploaded file info
+//	if err != nil {
+//		return nil, err
+//	}
+//	_, _ = binWriter.Write(stream)
+//	_ = writer.Close() // write to body stream
+//	guzzle.PostFormData(ctx, target, body, writer.FormDataContentType(), nil) // call post form
 //
 // ----
 func (c *Client) PostFormData(ctx context.Context, url string, body io.Reader, contentType string, head map[string]string) (Result, error) {
