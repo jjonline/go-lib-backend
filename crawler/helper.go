@@ -61,8 +61,8 @@ func RandInt64MinMaxDuration(min, max int64) time.Duration {
 	return time.Duration(RandFloat64MinMax(min, max)) * time.Second
 }
 
-// 判断文件夹是否存在
-func pathExists(path string) bool {
+// PathExists 判断文件|文件夹是否存在
+func PathExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || os.IsExist(err)
 }

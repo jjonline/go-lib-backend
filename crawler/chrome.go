@@ -141,7 +141,7 @@ func (c *Chrome) CleanCookie() *Chrome {
 //
 // c.CaptureScreenshot("./runtime/").Crawler("https://www.baidu.com/", "", tasks)
 func (c *Chrome) SetCaptureScreenshot(savePath string) *Chrome {
-	if pathExists(savePath) {
+	if PathExists(savePath) {
 		c._screenshotPath = savePath
 		if !strings.HasSuffix(savePath, "/") {
 			c._screenshotPath = savePath + "/" // 确保一定有后缀斜杠
