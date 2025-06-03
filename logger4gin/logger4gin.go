@@ -1,14 +1,15 @@
-package logger
+package logger4gin
 
 import (
 	"bytes"
 	"github.com/gin-gonic/gin"
 	"github.com/go-stack/stack"
-	"go.uber.org/zap"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -21,7 +22,6 @@ import (
 const (
 	XRequestID          = "x-request-id"       // 请求ID名称
 	XRequestIDPrefix    = "R"                  // 当使用纳秒时间戳作为请求ID时拼接的前缀字符串
-	TextGinRouteInit    = "gin.route.init"     // gin 路由注册日志标记
 	TextGinPanic        = "gin.panic.recovery" // gin panic日志标记
 	TextGinRequest      = "gin.request"        // gin request请求日志标记
 	TextGinResponseFail = "gin.response.fail"  // gin 业务层面失败响应日志标记
@@ -46,13 +46,13 @@ func GinRecovery(ctx *gin.Context) {
 			}
 
 			// record log
-			zapLogger.Error(
+			slog.Default().Error(
 				TextGinPanic,
-				zap.String("module", TextGinPanic),
-				zap.String("url", ctx.Request.URL.Path),
-				zap.String("request", string(httpRequest)),
-				zap.Any("error", err),
-				zap.String("stack", stack.Trace().TrimRuntime().String()),
+				"module", TextGinPanic,
+				"url", ctx.Request.URL.Path,
+				"request", string(httpRequest),
+				"error", err,
+				"stack", stack.Trace().TrimRuntime().String(),
 			)
 
 			if brokenPipe {
@@ -69,8 +69,8 @@ func GinRecovery(ctx *gin.Context) {
 }
 
 // GinLogger zap实现的gin-logger日志中间件<gin.HandlerFunc的实现>
-//   - appendHandle 额外补充的自定义添加字段方法，可选参数
-func GinLogger(appendHandle func(ctx *gin.Context) []zap.Field) func(ctx *gin.Context) {
+//   - appendHandle 额外补充的自定义添加字段方法，可选参数，返回偶数键值对切片
+func GinLogger(appendHandle func(ctx *gin.Context) []any) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		start := time.Now()
 
@@ -87,18 +87,19 @@ func GinLogger(appendHandle func(ctx *gin.Context) []zap.Field) func(ctx *gin.Co
 		ctx.Next()
 
 		latencyTime := time.Now().Sub(start)
-		fields := []zap.Field{
-			zap.String("module", TextGinRequest),
-			zap.String("ua", ctx.GetHeader("User-Agent")),
-			zap.String("method", ctx.Request.Method),
-			zap.String("req_id", requestID),
-			zap.String("req_body", bodyData),
-			zap.String("client_ip", ctx.ClientIP()),
-			zap.String("url_path", ctx.Request.URL.Path),
-			zap.String("url_query", ctx.Request.URL.RawQuery),
-			zap.String("url", ctx.Request.URL.String()),
-			zap.Int("http_status", ctx.Writer.Status()),
-			zap.Duration("duration", latencyTime),
+
+		fields := []any{
+			"module", TextGinRequest,
+			"ua", ctx.GetHeader("User-Agent"),
+			"method", ctx.Request.Method,
+			"req_id", requestID,
+			"req_body", bodyData,
+			"client_ip", ctx.ClientIP(),
+			"url_path", ctx.Request.URL.Path,
+			"url_query", ctx.Request.URL.RawQuery,
+			"url", ctx.Request.URL.String(),
+			"http_status", ctx.Writer.Status(),
+			"duration", latencyTime,
 		}
 
 		// 额外自定义补充字段
@@ -107,72 +108,66 @@ func GinLogger(appendHandle func(ctx *gin.Context) []zap.Field) func(ctx *gin.Co
 		}
 
 		if latencyTime.Seconds() > 0.5 {
-			zapLogger.Warn(ctx.Request.URL.Path, fields...)
+			slog.Default().Warn(ctx.Request.URL.Path, fields...)
 		} else {
-			zapLogger.Info(ctx.Request.URL.Path, fields...)
+			slog.Default().Info(ctx.Request.URL.Path, fields...)
 		}
 	}
 }
 
 // GinLogHttpFail gin框架失败响应日志处理
 func GinLogHttpFail(ctx *gin.Context, err error) {
-	if err != nil && zapLogger.Core().Enabled(zap.InfoLevel) {
-		zapLogger.Warn(
+	if err != nil {
+		slog.Default().Warn(
 			TextGinResponseFail,
-			zap.String("module", TextGinResponseFail),
-			zap.String("ua", ctx.GetHeader("User-Agent")),
-			zap.String("method", ctx.Request.Method),
-			zap.String("req_id", GetRequestID(ctx)),
-			zap.String("client_ip", ctx.ClientIP()),
-			zap.String("url_path", ctx.Request.URL.Path),
-			zap.String("url_query", ctx.Request.URL.RawQuery),
-			zap.String("url", ctx.Request.URL.String()),
-			zap.Int("http_status", ctx.Writer.Status()),
-			zap.Error(err),
-			zap.String("stack", stack.Trace().TrimRuntime().String()),
+			"module", TextGinResponseFail,
+			"ua", ctx.GetHeader("User-Agent"),
+			"method", ctx.Request.Method,
+			"req_id", GetRequestID(ctx),
+			"client_ip", ctx.ClientIP(),
+			"url_path", ctx.Request.URL.Path,
+			"url_query", ctx.Request.URL.RawQuery,
+			"url", ctx.Request.URL.String(),
+			"http_status", ctx.Writer.Status(),
+			"error", err,
+			"stack", stack.Trace().TrimRuntime().String(),
 		)
 	}
 }
 
 // GinCors 为gin开启跨域功能<尽量通过nginx反代处理>
 func GinCors(ctx *gin.Context) {
-	ctx.Header("Access-Control-Allow-Origin", "*")
+	var allowOrigin = "*"
+
+	// detect origin
+	if origin := ctx.Request.Header.Get("Origin"); origin != "" {
+		allowOrigin = origin
+	} else if referer := ctx.Request.Referer(); referer != "" {
+		if ref, err := url.Parse(referer); err == nil {
+			allowOrigin = ref.Scheme + "://" + ref.Host
+		}
+	}
+
+	ctx.Header("Access-Control-Allow-Origin", allowOrigin)
 	ctx.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	ctx.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,X-App-Client,X-Requested-With,Authorization")
 	ctx.Header("Access-Control-Allow-Methods", "GET,OPTIONS,POST,PUT,DELETE,PATCH")
-	// REF https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Access-Control-Max-Age
-	ctx.Header("Access-Control-Max-Age", "7200")
 	if ctx.Request.Method == http.MethodOptions {
-		zapLogger.Debug(
+		slog.Default().Debug(
 			TextGinPreflight,
-			zap.String("module", TextGinPreflight),
-			zap.String("ua", ctx.GetHeader("User-Agent")),
-			zap.String("method", ctx.Request.Method),
-			zap.String("req_id", GetRequestID(ctx)),
-			zap.String("client_ip", ctx.ClientIP()),
-			zap.String("url_path", ctx.Request.URL.Path),
-			zap.String("url_query", ctx.Request.URL.RawQuery),
-			zap.String("url", ctx.Request.URL.String()),
+			"module", TextGinPreflight,
+			"ua", ctx.GetHeader("User-Agent"),
+			"method", ctx.Request.Method,
+			"req_id", GetRequestID(ctx),
+			"client_ip", ctx.ClientIP(),
+			"url_path", ctx.Request.URL.Path,
+			"url_query", ctx.Request.URL.RawQuery,
+			"url", ctx.Request.URL.String(),
 		)
 		ctx.AbortWithStatus(http.StatusNoContent)
 		return
 	}
 	ctx.Next()
-}
-
-// GinPrintInitRoute 为gin自定义注册路由日志输出
-//
-//	注意：因gin路由注册信息输出只有dev模式才有
-//	若为了全面记录路由注册日志，调用 gin.SetMode 方法代码可写在路由注册之后，但就会出现gin的开发模式提示信息
-func GinPrintInitRoute(httpMethod, absolutePath, handlerName string, nuHandlers int) {
-	zapLogger.Info(
-		TextGinRouteInit,
-		zap.String("module", TextGinRouteInit),
-		zap.String("method", httpMethod),
-		zap.String("path", absolutePath),
-		zap.String("handler", handlerName),
-		zap.Int("handler_num", nuHandlers),
-	)
 }
 
 // setRequestID 内部方法设置请求ID
