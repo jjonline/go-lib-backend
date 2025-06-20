@@ -1,5 +1,7 @@
 # guzzle
 
+> deprecated，本仓库不再维护更新。推荐使用：[https://github.com/go-resty/resty](https://github.com/go-resty/resty)
+
 ## 一、包功能说明
 
 > 类似php客户端 [guzzle](https://github.com/guzzle/guzzle) ，http请求库简单封装。

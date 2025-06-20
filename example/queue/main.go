@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jjonline/go-lib-backend/example/queue/client"
 	"github.com/jjonline/go-lib-backend/example/queue/tasks"
+	"github.com/jjonline/go-lib-backend/logger"
 	"github.com/jjonline/go-lib-backend/queue"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,8 +16,8 @@ import (
 )
 
 func main() {
-	// init zap logger && redis client
-	_logger := &client.DefineLogger{}
+	_logger := logger.New(nil)
+	_logger.GetSlogLeveler().Set(slog.LevelInfo)
 
 	// 使用memory内存驱动
 	// !!!警告：本地memory驱动仅能用于本地开发调试，不得用于prod生产环境，此处仅为示例!!!
@@ -64,7 +67,7 @@ func main() {
 	}()
 
 	// start worker daemon
-	if err := queueService.Start(); nil != err && err != queue.ErrQueueClosed {
+	if err := queueService.Start(); nil != err && !errors.Is(err, queue.ErrQueueClosed) {
 		_logger.Info("queue started failed: " + err.Error())
 		close(idleCloser)
 	} else {

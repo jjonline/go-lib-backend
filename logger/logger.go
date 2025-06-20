@@ -12,26 +12,27 @@ import (
 
 // Options 参数选项
 type Options struct {
-	AddSource bool  // 日志是否添加代码source，默认false表示不添加
-	UseText   bool  // 日志格式使用text文本，默认false表示使用json
-	MaxSize   int64 // 当日志target为文件时支持日志轮转和切割，此处指定单个文件最大体积，超过最大体积会自动切割，单位：比特，不设置或设置0表示不按文件体积切割
-	MaxDays   int64 // 当日志target为文件时支持日志轮转和切割，指定保留日志文件的最大天数，不设置或设置0表示不清理
+	// Target 日志存储目标，支持文件目录路径：./runtime/、/opt/logs/ 或 实现 io.Writer 的写入器例如: os.Stdout 、 os.Stderr
+	Target any
+	// AddSource 日志是否添加代码source，默认false表示不添加
+	AddSource bool
+	// UseText 日志格式使用text文本，默认false表示使用json
+	UseText bool
+	// MaxSize 当日志 Target 为文件目录时支持日志轮转切割，指定单个文件最大体积，超过自动切割，设置0表示不按文件体积轮转，单位：比特
+	MaxSize int64
+	// MaxDays 当日志 Target 为文件时支持日志轮转和切割，指定保留日志文件的最大天数，设置0表示不清理
+	MaxDays int64
 }
 
 // New 初始化单例logger
 //
-//	-- level   日志级别：debug、info、warning 等，传入变量可实时控制调整日志级别
-//	-- target  文件路径形式的目录路径：./runtime/、/opt/logs/ 或 字符串stderr、stdout表示标准输出 或 实现 io.Writer 的写入器
-//	-- useText 是否使用文本格式，默认false，默认json格式日志
+//	-- opt 参考 Options 结构体说明，可给nil默认输出到标准输出
 //
-//		lvl := &slog.LevelVar{}
-//		lvl.Set(slog.LevelInfo)
-//		logger := logger.New(lvl, "stdout")
-//		// logger := logger.New(lvl, os.Stdout)
+//		logger := logger.New(&logger.Options{Target: os.Stdout})
 //		// can render info log
 //		logger.Info("info", "info", "testing")
 //		// change log level
-//		lvl.Set(slog.LevelWarn)
+//		logger.GetSlogLeveler().Set(slog.LevelInfo)
 //		// none log render
 //		logger.Info("info", "info", "testing")
 //		// high performance
@@ -41,20 +42,26 @@ type Options struct {
 //		// get log.Logger instance
 //		logger.GetLogLogger()
 //	使用原生log/slog即可，无需引入第三方包
-func New(level *slog.LevelVar, target any, opts ...Options) *Logger {
+//	默认日志级别为slog.LevelWarn，可通过logger.GetSlogLeveler().Set(slog.LevelInfo)重设
+func New(opt *Options) *Logger {
+	if nil == opt {
+		opt = &Options{
+			Target:    os.Stdout,
+			AddSource: false,
+			UseText:   false,
+			MaxSize:   0,
+			MaxDays:   0,
+		}
+	}
+
 	// deal options
-	var opt = Options{
-		UseText: false,
-		MaxSize: 0,
-		MaxDays: 0,
-	}
-	if len(opts) > 0 {
-		opt = opts[0]
-	}
+	var (
+		level = &slog.LevelVar{}
+	)
 
 	// deal target writer
 	var writer io.Writer
-	switch t := target.(type) {
+	switch t := opt.Target.(type) {
 	case io.Writer:
 		writer = t
 	case string:
@@ -73,12 +80,15 @@ func New(level *slog.LevelVar, target any, opts ...Options) *Logger {
 					panic(fmt.Errorf("%w", err))
 				}
 			}
-			// 默认512M自动rotate
+			// rotate writer
 			writer = newDailySizeRotateWriter(dir, opt.MaxSize, opt.MaxDays)
 		}
 	default:
 		panic("unsupported target type, support string and io.Writer, string can use stdout as io.Stdout or stderr as os.Stderr or DIR path with suffix slash")
 	}
+
+	// default level Warning
+	level.Set(slog.LevelWarn)
 
 	// deal slog Handler
 	var handler slog.Handler
@@ -152,4 +162,11 @@ func (l *Logger) GetLogLogger() *log.Logger {
 // GetWriter 获取底层writer实现
 func (l *Logger) GetWriter() io.Writer {
 	return l.writer
+}
+
+// GetSlogLeveler 获取底层slog.Leveler，可自定义日志级别
+//
+//	默认日志级别为slog.LevelWarn， 示例：logger.GetSlogLeveler().Set(slog.LevelInfo)
+func (l *Logger) GetSlogLeveler() *slog.LevelVar {
+	return l.level
 }

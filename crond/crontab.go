@@ -2,7 +2,7 @@ package crond
 
 import (
 	"github.com/robfig/cron/v3"
-	"go.uber.org/zap"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -12,17 +12,17 @@ const module = "crontab"
 
 // Crontab 定时任务实现
 type Crontab struct {
-	cron   *cron.Cron  // 定时任务实例
-	logger *zap.Logger // 日志输出
-	lock   sync.Mutex  // 并发锁
+	cron   *cron.Cron   // 定时任务实例
+	logger *slog.Logger // 日志输出
+	lock   sync.Mutex   // 并发锁
 }
 
-//  registeredCommand 已注册的定时任务映射map
+// registeredCommand 已注册的定时任务映射map
 var registeredCommand = make(map[int]CronTask)
 
 // New 实例化crontab实例
-func New(logger *zap.Logger) *Crontab {
-	log := cronLog{logger: logger}
+func New(logger *slog.Logger) *Crontab {
+	log := cronLog{logger: *logger}
 	timeZone := time.FixedZone("Asia/Shanghai", 8*3600) // 东八区
 	return &Crontab{
 		cron:   cron.New(cron.WithSeconds(), cron.WithLogger(log), cron.WithLocation(timeZone)),
@@ -32,11 +32,16 @@ func New(logger *zap.Logger) *Crontab {
 }
 
 // Register 注册定时任务类
-//  - @param spec string 定时规则：`Second | Minute | Hour | Dom (day of month) | Month | Dow (day of week)`
-//  - @param task CronTask 任务类需实现命令契约，并且传递结构体实例的指针
 func (c *Crontab) Register(task CronTask) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+
+	loggerWithAttr := c.logger.With(
+		slog.String("module", module),
+		slog.String("signature", task.Signature()),
+		slog.String("description", task.Desc()),
+		slog.String("rule", task.Rule()),
+	)
 
 	// 任务类包装
 	wrapper := func() {
@@ -44,58 +49,29 @@ func (c *Crontab) Register(task CronTask) {
 		defer func() {
 			if err := recover(); err != nil {
 				// record panic log
-				c.logger.Error(
+				loggerWithAttr.Error(
 					"crontab.panic",
-					zap.String("module", module),
-					zap.String("signature", task.Signature()),
-					zap.String("rule", task.Rule()),
-					zap.Stack("stack"),
+					slog.Any("error", err),
 				)
 			}
 		}()
 
 		// 执行定时任务
-		c.logger.Info(
-			"crontab.execute.start",
-			zap.String("module", module),
-			zap.String("signature", task.Signature()),
-			zap.String("rule", task.Rule()),
-		)
+		loggerWithAttr.Info("crontab.execute.start")
 		err := task.Execute()
 		if err != nil {
-			c.logger.Error(
-				"crontab.execute.failed",
-				zap.String("module", module),
-				zap.String("signature", task.Signature()),
-				zap.String("rule", task.Rule()),
-			)
+			loggerWithAttr.Error("crontab.execute.failed", slog.Any("error", err))
 		} else {
-			c.logger.Info(
-				"crontab.execute.ok",
-				zap.String("module", module),
-				zap.String("signature", task.Signature()),
-				zap.String("rule", task.Rule()),
-			)
+			loggerWithAttr.Info("crontab.execute.ok")
 		}
 	}
 
 	// 注册任务
 	entryId, err := c.cron.AddFunc(task.Rule(), wrapper)
 	if err != nil {
-		c.logger.Error(
-			"crontab.register.err",
-			zap.String("module", module),
-			zap.String("signature", task.Signature()),
-			zap.String("rule", task.Rule()),
-			zap.Error(err),
-		)
+		loggerWithAttr.Error("crontab.register.err", slog.Any("error", err))
 	} else {
-		c.logger.Info(
-			"crontab.register.ok",
-			zap.String("module", module),
-			zap.String("signature", task.Signature()),
-			zap.String("rule", task.Rule()),
-		)
+		loggerWithAttr.Info("crontab.register.ok")
 		registeredCommand[int(entryId)] = task
 	}
 }

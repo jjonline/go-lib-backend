@@ -2,7 +2,27 @@ package crond
 
 // CronTask 定时任务类契约
 type CronTask interface {
-	Signature() string // Signature 定时任务名称，即赋予定时任务的一个名称便于日志里识别
-	Rule() string      // CronRule  定时规则：`Second | Minute | Hour | Dom (day of month) | Month | Dow (day of week)`
-	Execute() error    // Execute   执行入口，返回nil执行成功，返回error或发生panic执行失败
+	// Signature 定时任务名称，请保持唯一，类似常量变量概念，即赋予定时任务的一个名称便于日志里识别
+	Signature() string
+	// Desc 定时任务功能描述
+	Desc() string
+	// Rule 定时规则：`Second | Minute | Hour | Dom (day of month) | Month | Dow (day of week)`
+	//   - 注意：是精确到秒的，如果你的任务不需要精确到秒，则秒规则给一个确切的数字比如0，给*表示在你的规则内每秒触发1次
+	//   - ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	//     *
+	//   - *       *    *    *    *    *
+	//   - -	   -    -    -    -    -
+	//   - |	   |    |    |    |    |
+	//   - |	   |    |    |    |    |
+	//   - |	   |    |    |    |    +----- day of week (0 - 7) (Sunday=0 or 7)
+	//   - |	   |    |    |    +---------- month (1 - 12)
+	//   - |	   |    |    +--------------- day of month (1 - 31)
+	//   - |	   |    +-------------------- hour (0 - 23)
+	//   - |	   +------------------------- min (0 - 59)
+	//   - +--------------------------------- sec (0 - 59)
+	//     *
+	//   - ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	Rule() string
+	// Execute 执行入口，返回nil执行成功，返回error或发生panic执行失败
+	Execute() error
 }

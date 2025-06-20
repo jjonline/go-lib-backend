@@ -5,7 +5,7 @@ package queue
  * @Email  : jjonline@jjonline.cn
  */
 
-import "github.com/go-redis/redis/v8"
+import "github.com/redis/go-redis/v9"
 
 // luaScripts redis lua
 type luaScripts struct{}

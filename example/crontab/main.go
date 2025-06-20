@@ -4,7 +4,7 @@ import (
 	"github.com/jjonline/go-lib-backend/crond"
 	"github.com/jjonline/go-lib-backend/example/crontab/console"
 	"github.com/jjonline/go-lib-backend/logger"
-	"go.uber.org/zap"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,8 +12,11 @@ import (
 
 func main() {
 	// init
-	log := logger.New("debug", "stderr")
-	siCrontab := crond.New(log.Zap.With(zap.String("module", "crontab")))
+	_logger := logger.New(nil)
+	siCrontab := crond.New(_logger.GetSlogLogger())
+
+	// reset level
+	_logger.GetSlogLeveler().Set(slog.LevelInfo)
 
 	// register
 	siCrontab.Register(&console.TestCommandOk{})

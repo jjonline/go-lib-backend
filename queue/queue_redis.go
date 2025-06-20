@@ -8,7 +8,7 @@ package queue
 import (
 	"context"
 	"errors"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"sync"
 	"time"
 )
@@ -65,7 +65,7 @@ func (r *redisQueue) LaterAt(queue string, timeAt time.Time, payload interface{}
 		Member: payload,
 	}
 	ctx := context.Background()
-	return r.connection.ZAdd(ctx, r.delayedName(queue), &item).Err()
+	return r.connection.ZAdd(ctx, r.delayedName(queue), item).Err()
 }
 
 // Pop 取出弹出一条待执行的任务

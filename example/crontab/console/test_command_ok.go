@@ -7,6 +7,10 @@ func (t TestCommandOk) Signature() string {
 	return "test_command_ok"
 }
 
+func (t TestCommandOk) Desc() string {
+	return "测试执行成功"
+}
+
 func (t TestCommandOk) Rule() string {
 	return "0 */1 * * * *"
 }
