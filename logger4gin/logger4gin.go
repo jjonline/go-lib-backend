@@ -264,8 +264,8 @@ func GetRequestBody(ctx *gin.Context, strip bool) string {
 	return bodyData
 }
 
-// GetResponseBody 获取响应内容
-func GetResponseBody(ctx *gin.Context, strip bool) string {
+// GetRes 获取响应内容和状态码
+func GetRes(ctx *gin.Context, strip bool) (string, int) {
 	if writer, ok := ctx.Writer.(*responseRecorder); ok {
 		bodyData := writer.body.String()
 
@@ -276,9 +276,9 @@ func GetResponseBody(ctx *gin.Context, strip bool) string {
 			bodyData = strings.Replace(bodyData, "}", "", -1)
 		}
 
-		return bodyData
+		return bodyData, writer.Status()
 	}
-	return ""
+	return "", 0
 }
 
 // CauseByLostConnection 字符串匹配方式检查是否为断开连接导致出错

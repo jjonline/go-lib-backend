@@ -20,6 +20,7 @@ const (
 	DefaultMaxExecuteDuration = 900 * time.Second      // job任务执行时长极限预警值：15分钟
 	DefaultMaxTries           = 1                      // 默认最大重试次数：1次<即不重试>
 	DefaultRetryInterval      = 60                     // 默认下次任务重试间隔：1分钟<即可多次执行任务失败后下一次尝试是在60秒后>
+	DefaultMaxConcurrency     = 3                      // 默认单个task最大并发数
 )
 
 var (
@@ -39,6 +40,16 @@ var (
 	textJobTooLong    = "queue.execute.too.long" // job多次尝试执行检查距离上次执行时间差已经大于设置的最大执行时长
 	textJobFailedLog  = "queue.failed.log"       // job执行失败标记文案
 )
+
+// region config配置
+
+// Config 队列配置
+type Config struct {
+	MaxConcurrency uint8  // 单个task的最大并发处理数量，默认为3
+	TablePrefix    string // 当使用MySQL驱动时表的前缀，默认为空
+}
+
+// endregion
 
 // region queue队列抽象
 
@@ -262,6 +273,41 @@ type jobProperty struct {
 	popTime    time.Time     // 任务被pop取出的时刻（等级于开始执行时刻）
 	timeout    time.Duration // 任务超时时长
 	timeoutAt  time.Time     // 任务执行超时的时刻
+}
+
+// endregion
+
+// region 统计信息结构体
+
+// MemoryStatistics 内存统计
+type MemoryStatistics struct {
+	SysMemoryTotal       uint64  `json:"sys_memory_total"`        // 系统内存总数（单位：字节）
+	SysMemoryUsed        uint64  `json:"sys_memory_used"`         // 系统内存已使用数（单位：字节）
+	SysMemoryAvailable   uint64  `json:"sys_memory_available"`    // 系统内存可供申请使用的内存数（单位：字节）
+	SysMemoryUsedPercent float64 `json:"sys_memory_used_percent"` // 系统内存已使用比例（0~1之间的小数）
+	GoMemoryTotal        uint64  `json:"go_memory_total"`         // go程序从系统申请的内存总数（单位：字节）
+	GoMemoryAlloc        uint64  `json:"go_memory_alloc"`         // go程序当前正在使用的内存数（单位：字节）
+	GoMemoryUsedPercent  float64 `json:"go_memory_used_percent"`  // go程序申请的内存与系统总内存的比例（0~1之间的小数）
+}
+
+// WorkerStatistics 工作进程统计结构
+type WorkerStatistics struct {
+	ActiveWorkers int64          `json:"active_workers"` // 正在处理任务的worker数量
+	TotalWorkers  int64          `json:"total_workers"`  // 实际存在的worker总数
+	WorkerState   map[int64]bool `json:"worker_state"`   // 每个worker的状态映射
+}
+
+// JobStatistics job任务统计结构
+type JobStatistics struct {
+	TotalJobs      int64            `json:"total_jobs"`      // 待消费的job总数
+	JobsStatistics map[string]int64 `json:"jobs_statistics"` // job和待消费数map
+}
+
+// Statistics 统计信息
+type Statistics struct {
+	MemoryStatistics MemoryStatistics `json:"memory_statistics"` // 内存情况统计
+	WorkerStatistics WorkerStatistics `json:"worker_statistics"` // worker情况统计
+	JobStatistics    JobStatistics    `json:"job_statistics"`    // job情况统计
 }
 
 // endregion

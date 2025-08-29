@@ -1,13 +1,9 @@
 package queue
 
-/*
- * @Time   : 2021/1/13 下午12:00
- * @Email  : jjonline@jjonline.cn
- */
-
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,6 +13,7 @@ import (
 const (
 	Redis  = "redis"
 	Memory = "memory"
+	MySQL  = "mysql"
 )
 
 // Queue 队列struct
@@ -33,8 +30,8 @@ type Queue struct {
 //	@param driver     队列实现底层驱动，可选值见上方14行附近位置的常量
 //	@param conn       driver对应底层驱动连接器句柄，具体类型参考 QueueIFace 实体类
 //	@param logger     实现 Logger 接口的结构体实例的指针对象
-//	@param concurrent 单个队列最大并发消费数
-func New(driver string, conn interface{}, logger Logger, concurrent int64) *Queue {
+//	@param config     单个队列最大并发消费数
+func New(driver string, conn interface{}, logger Logger, config Config) *Queue {
 	var queue QueueIFace
 
 	// init specify queue driver
@@ -44,6 +41,8 @@ func New(driver string, conn interface{}, logger Logger, concurrent int64) *Queu
 	case Redis:
 		// queue = &redisQueue{connection: conn.(*redis.Client)}
 		queue = &redisQueue{luaScripts: &luaScripts{}}
+	case MySQL:
+		queue = &mysqlQueue{}
 	default:
 		panic("do not implement queue instance: " + driver)
 	}
@@ -54,10 +53,15 @@ func New(driver string, conn interface{}, logger Logger, concurrent int64) *Queu
 		panic(err.Error())
 	}
 
+	// set config Default
+	if config.MaxConcurrency <= 0 {
+		config.MaxConcurrency = DefaultMaxConcurrency
+	}
+
 	return &Queue{
 		driver:  driver,
 		queue:   queue,
-		manager: newManager(queue, logger, concurrent),
+		manager: newManager(queue, logger, config),
 		logger:  logger,
 	}
 }
@@ -65,10 +69,9 @@ func New(driver string, conn interface{}, logger Logger, concurrent int64) *Queu
 // region 处理失败任务Failed相关方法
 
 // SetFailedJobHandler 设置失败任务的收尾处理器
-//
-//	1、尝试了指定的最大尝试次数后仍然失败的任务善后方法
-//	2、此时通过此处设置的处理器可记录到底哪个任务失败了以及失败任务的payload参数情况
-//	3、以及后续的重试等逻辑等
+// 1、尝试了指定的最大尝试次数后仍然失败的任务善后方法
+// 2、此时通过此处设置的处理器可记录到底哪个任务失败了以及失败任务的payload参数情况
+// 3、以及后续的重试等逻辑等
 func (q *Queue) SetFailedJobHandler(failedJobHandler FailedJobHandler) {
 	q.manager.failedJobHandler = failedJobHandler
 }
@@ -186,11 +189,41 @@ func (q *Queue) Size(task TaskIFace) int64 {
 	return q.queue.Size(task.Name())
 }
 
-// SetHighPriorityTask 指定高优先级的Job任务，多次调用可以设置多个高优先级Job任务
-//   - ① 当队列消费者消费速度过慢，任务堆积时被指定的高优先级Job将尽量保障优先执行
-//   - ② 虽然此处可以指定队列job的高优先级执行，但也不保障待执行任务过多堆积时优先级任务一定会被执行，所以高优先级Job不要指定的过多
-func (q *Queue) SetHighPriorityTask(task TaskIFace) error {
-	return q.manager.setPriorityTask(task)
+// SetAllowTasks 指定可以运行的任务
+func (q *Queue) SetAllowTasks(taskNames ...string) {
+	for _, name := range taskNames {
+		if strings.TrimSpace(name) == "" {
+			continue
+		}
+		q.logger.Info("queue set-allow-task", "taskName", name)
+		q.manager.allowTasks[name] = struct{}{}
+	}
+}
+
+// SetExcludeTasks 指定不可运行的任务
+func (q *Queue) SetExcludeTasks(taskNames ...string) {
+	for _, name := range taskNames {
+		if strings.TrimSpace(name) == "" {
+			continue
+		}
+		q.logger.Info("queue set-exclude-task", "taskName", name)
+		q.manager.excludeTasks[name] = struct{}{}
+	}
+}
+
+// endregion
+
+// region Worker动态管理相关方法
+
+// GetStatistics 获取统计信息，请勿频繁调用，底层统计内存会STW
+//   - 返回包含当前worker数、最大worker数、活跃worker数、内存使用情况等信息
+func (q *Queue) GetStatistics() Statistics {
+	return q.manager.getStatistics()
+}
+
+// AutoScaleWorkers 自动扩缩容Worker，内部自动依据待消费job和内存情况决定是扩容还是缩容
+func (q *Queue) AutoScaleWorkers() error {
+	return q.manager.autoScaleWorkers()
 }
 
 // endregion

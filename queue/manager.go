@@ -1,19 +1,17 @@
 package queue
 
-/*
- * @Time   : 2021/1/16 下午12:30
- * @Email  : jjonline@jjonline.cn
- */
-
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-stack/stack"
 	"math/rand"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/go-stack/stack"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 // *************************************************
@@ -23,8 +21,11 @@ import (
 // 3、队列相关管控功能实现：启动、优雅停止、协程并发调度等
 // *************************************************
 
-// jitterBase looper最小为450毫秒间隔，最大为1000毫秒间隔
-var jitterBase = 450 * time.Millisecond
+const (
+	general                   = "general"              // 通用名称
+	jitterBase                = 450 * time.Millisecond // looper最小为450毫秒间隔，最大为1000毫秒间隔
+	memoryMaxPercentThreshold = 90                     // 系统内存使用率阈值后停止自动扩容
+)
 
 type atomicBool int32
 
@@ -34,37 +35,47 @@ func (b *atomicBool) setFalse()   { atomic.StoreInt32((*int32)(b), 0) }
 
 // manager 队列管理者，队列的调度执行和管理
 type manager struct {
-	queue            QueueIFace            // 队列底层实现实例
-	channel          chan JobIFace         // 任务类执行job的通道chan
-	logger           Logger                // 实现 Logger 接口的结构体实例的指针对象
-	concurrent       int64                 // 单个队列最大并发worker数
-	tasks            map[string]TaskIFace  // 队列名与任务类实例映射map，interface无需显式指定执指针类型，但实际传参需指针类型
-	priorityTasks    map[string]TaskIFace  // 指定的高优先级job任务
-	failedJobHandler FailedJobHandler      // 失败任务[最大尝试次数后仍然尝试失败（Execute返回了Error 或 执行导致panic）的任务]处理器
-	lock             sync.Mutex            // 并发锁
-	doneChan         chan struct{}         // 关闭队列的信号控制chan
-	inShutdown       atomicBool            // 原子态标记：是否处于优雅关闭状态中
-	inWorkingMap     sync.Map              // map[string]int64  当前正work中的jobID与workerID映射map
-	workerStatus     map[int64]*atomicBool // worker工作进程状态标记map
-	jitter           time.Duration         // 循环器抖动间隔
+	queue            QueueIFace               // 队列底层实现实例
+	channel          chan JobIFace            // 任务类执行job的通道chan
+	logger           Logger                   // 实现 Logger 接口的结构体实例的指针对象
+	config           Config                   // 队列配置
+	concurrent       int64                    // 当前并发worker数
+	tasks            map[string]TaskIFace     // 队列名与任务类实例映射map，interface无需显式指定执指针类型，但实际传参需指针类型
+	failedJobHandler FailedJobHandler         // 失败任务[最大尝试次数后仍然尝试失败（Execute返回了Error 或 执行导致panic）的任务]处理器
+	lock             sync.Mutex               // 并发锁
+	doneChan         chan struct{}            // 关闭队列的信号控制chan
+	inShutdown       atomicBool               // 原子态标记：是否处于优雅关闭状态中
+	isChannelClosed  atomicBool               // 原子态标记：looper与worker之间channel是否已关闭，多个looper争抢关闭channel
+	inWorkingMap     sync.Map                 // map[string]int64  当前正work中的jobID与workerID映射map
+	workerStatus     map[int64]*atomicBool    // worker工作进程状态标记map
+	workerChannel    map[int64]chan struct{}  // worker停止信号通道映射map
+	jitter           map[string]time.Duration // 循环器抖动间隔，key为task或general，value为对应looper的循环间隔
+	allowTasks       map[string]struct{}      // 指定可以运行的队列
+	excludeTasks     map[string]struct{}      // 指定不可运行的队列
+	realTasksNum     int64                    // 可以运行的task数（综合计算task、allowTasks、canExecuteTask）
+	nextWorkerID     int64                    // 下一个worker ID
 }
 
 // newManager 实例化一个manager
-// @param queue      队列实现底层实例指针
-// @param logger     实现 Logger 接口的结构体实例的指针对象
-// @param concurrent 队列实际执行并发worker工作者数量
-func newManager(queue QueueIFace, logger Logger, concurrent int64) *manager {
+// @param queue    队列实现底层实例指针
+// @param logger   实现 Logger 接口的结构体实例的指针对象
+// @param config   配置
+func newManager(queue QueueIFace, logger Logger, config Config) *manager {
 	return &manager{
 		queue:         queue,
 		channel:       make(chan JobIFace), // no buffer channel, execute when worker received
 		logger:        logger,
-		concurrent:    concurrent,
+		config:        config,
 		tasks:         make(map[string]TaskIFace),
-		priorityTasks: make(map[string]TaskIFace),
-		workerStatus:  make(map[int64]*atomicBool, concurrent),
+		workerStatus:  make(map[int64]*atomicBool),
+		workerChannel: make(map[int64]chan struct{}),
 		inWorkingMap:  sync.Map{},
 		lock:          sync.Mutex{},
-		jitter:        450 * time.Millisecond,
+		jitter:        make(map[string]time.Duration),
+		allowTasks:    make(map[string]struct{}),
+		excludeTasks:  make(map[string]struct{}),
+		realTasksNum:  0,
+		nextWorkerID:  0,
 	}
 }
 
@@ -99,27 +110,6 @@ func (m *manager) bootstrap(tasks []TaskIFace) (err error) {
 	return nil
 }
 
-// setPriorityTask 设置高优先级任务
-func (m *manager) setPriorityTask(task TaskIFace) error {
-	m.lock.Lock()
-
-	// log
-	m.logger.Debug(
-		"setPriorityTask",
-		"name",
-		task.Name(),
-		"max_tries",
-		IFaceToString(task.MaxTries()),
-		"retry_interval",
-		IFaceToString(task.RetryInterval()),
-	)
-
-	m.priorityTasks[task.Name()] = task
-	m.lock.Unlock()
-
-	return nil
-}
-
 // start 启动队列进程工作者
 func (m *manager) start() (err error) {
 	// 队列处于关闭中状态时启动直接返回Err
@@ -127,79 +117,174 @@ func (m *manager) start() (err error) {
 		return ErrQueueClosed
 	}
 
-	// 启动loop执行者循环调度
-	go m.startLooper()
+	// ① 启动通用looper
+	go m.startGeneralLooper()
 
-	// 并发启动多个消费worker进程
-	var i int64
-	for i = 0; i < m.concurrent; i++ {
-		go m.startWorker(i)
+	// ② 启动task专用looper
+	m.startDedicatedLooper()
+
+	// ③ 启动task数量的worker
+	m.lock.Lock()
+	m.startSingleWorker() // for general +1 worker
+	for name := range m.tasks {
+		// 检查任务是否可以运行
+		if !m.allowRun(name) {
+			continue
+		}
+		m.realTasksNum++ // 记录真实运行运行的task数
+		m.startSingleWorker()
 	}
+	m.lock.Unlock()
 
 	return err
 }
 
-// startLooper 启动队列进程looper，循环触发job消费
-func (m *manager) startLooper() {
+// startGeneralLooper 启动通用looper，用于loop所有task
+func (m *manager) startGeneralLooper() {
 	for {
 		select {
 		case <-m.getDoneChan():
-			m.logger.Info("shutdown, queue looper exited")
-			close(m.channel) // close job chan
+			m.logger.Info("shutdown, queue general looper exited")
+			m.closeChannel() // close job chan
 			return
 		default:
-			m.looper() // continue loop all queue jobs
+			m.generalLooper() // continue loop all queue jobs
 		}
 	}
 }
 
-// looper 轮询 && 速率控制所有队列的looper
-func (m *manager) looper() {
+// generalLooper 通用轮询 && 速率控制所有队列的looper
+func (m *manager) generalLooper() {
 	// map的range是无序的，无需再随机pop队列
 	// range本身就是随机的
 	needSleep := true
 
-	// 高优先级任务先被轮询
-	for pName, pTask := range m.priorityTasks {
-		// 速率控制--限流支持，自主在任务类里实现RateAllow即可
-		if pTask.RateAllow() {
-			if job, exist := m.queue.Pop(pName); exist {
-				m.channel <- job // push job to worker for control process
-				needSleep = false
-			}
+	for name := range m.tasks {
+		//检查任务是否可以运行
+		if !m.allowRun(name) {
+			continue
 		}
-	}
 
-	for name, task := range m.tasks {
-		// 速率控制--限流支持，自主在任务类里实现RateAllow即可
-		if task.RateAllow() {
-			if job, exist := m.queue.Pop(name); exist {
-				m.channel <- job // push job to worker for control process
-				needSleep = false
-			}
+		// chan关闭则退出
+		if m.isChannelClosed.isSet() {
+			return
+		}
+
+		if job, exist := m.queue.Pop(name); exist {
+			m.channel <- job // push job to worker for control process
+			needSleep = false
 		}
 	}
 
 	// 所有队列都没job任务 looper随机休眠
 	if needSleep {
-		m.logger.Debug("no job pop, sleep for a while")
+		m.logger.Debug("no job pop, sleep for a while", "task", general)
 
-		time.Sleep(m.looperJitter())
+		time.Sleep(m.looperJitter(general))
 	}
 }
 
+// startDedicatedLooper 启动专用looper，用于loop指定task
+func (m *manager) startDedicatedLooper() {
+	for name := range m.tasks {
+		// 检查任务是否可以运行
+		if !m.allowRun(name) {
+			continue
+		}
+
+		// 启动专用looper
+		go m.dedicatedLooper(name)
+	}
+}
+
+// dedicatedLooper 专用轮询 && 速率控制所有队列的looper
+func (m *manager) dedicatedLooper(name string) {
+	for {
+		select {
+		case <-m.getDoneChan():
+			m.logger.Info("shutdown, queue dedicated looper exited", "task_looper", name)
+			m.closeChannel() // close job chan
+			return
+		default:
+			// chan关闭则退出
+			if m.isChannelClosed.isSet() {
+				return
+			}
+
+			// map的range是无序的，无需再随机pop队列
+			// range本身就是随机的
+			needSleep := true
+
+			if job, exist := m.queue.Pop(name); exist {
+				m.channel <- job // push job to worker for control process
+				needSleep = false
+			}
+
+			// 队列暂无job任务 looper随机休眠
+			if needSleep {
+				m.logger.Debug("no job pop, sleep for a while", "task_looper", name)
+
+				time.Sleep(m.looperJitter(name))
+			}
+		}
+	}
+}
+
+// 检查任务是否可以运行
+func (m *manager) allowRun(jobName string) bool {
+	if _, ok := m.allowTasks[jobName]; len(m.allowTasks) > 0 && !ok {
+		return false
+	}
+	if _, ok := m.excludeTasks[jobName]; len(m.excludeTasks) > 0 && ok {
+		return false
+	}
+	return true
+}
+
+// startSingleWorker 启动单个worker进程（需要在持有锁的情况下调用）
+func (m *manager) startSingleWorker() {
+	workerID := m.nextWorkerID
+	m.nextWorkerID++
+
+	// 创建worker停止信号通道
+	stopChan := make(chan struct{})
+	m.workerChannel[workerID] = stopChan
+
+	// 初始化worker状态
+	m.workerStatus[workerID] = new(atomicBool)
+
+	// 启动worker goroutine
+	go m.startWorker(workerID, stopChan)
+}
+
 // startWorker 启动队列进程工作者
-func (m *manager) startWorker(workerID int64) {
+func (m *manager) startWorker(workerID int64, stopChan chan struct{}) {
 	defer func() {
+		// 清理worker相关资源
+		m.lock.Lock()
+		delete(m.workerStatus, workerID)
+		delete(m.workerChannel, workerID)
+		m.lock.Unlock()
+
 		m.logger.Info(fmt.Sprintf("queue worker-%d exited", workerID), "worker_id", IFaceToString(workerID))
 	}()
 
 	// started logger
 	m.logger.Info(fmt.Sprintf("queue worker-%d started", workerID), "worker_id", IFaceToString(workerID))
 
-	// 阻塞消费job chan
-	for job := range m.channel {
-		m.runJob(job, workerID) // process run job
+	// 阻塞消费job chan或等待停止信号
+	for {
+		select {
+		case job, ok := <-m.channel:
+			if !ok {
+				// channel已关闭，退出worker
+				return
+			}
+			m.runJob(job, workerID) // process run job
+		case <-stopChan:
+			// 收到停止信号，退出worker
+			return
+		}
 	}
 }
 
@@ -286,8 +371,37 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), job.Timeout())
 	defer cancelFunc()
 
+	// 添加通信机制：done channel用于通知任务完成
+	done := make(chan struct{})
+
 	// goroutine execute task job
 	go func() {
+		defer func() {
+			// 确保无论如何都要关闭done channel
+			close(done)
+
+			if r := recover(); r != nil {
+				m.logger.Error(
+					"queue.execute.panic",
+					"stack", stack.Trace().TrimRuntime().String(),
+					"queue", job.GetName(),
+					"worker_id", IFaceToString(workerID),
+					"payload", IFaceToString(job.Payload()),
+					"error", IFaceToString(r),
+				)
+
+				var eErr error
+				switch t := r.(type) {
+				case error:
+					eErr = t
+				default:
+					eErr = fmt.Errorf("%s", t)
+				}
+
+				// panic: 检查任务尝试执行次数 & 标记失败状态
+				m.markJobAsFailedIfWillExceedMaxAttempts(job, eErr)
+			}
+		}()
 		err := task.Execute(ctx, job.Payload().RawBody())
 		if err == nil {
 			// step5、任务类执行成功：删除任务即可
@@ -310,25 +424,41 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 			)
 			m.markJobAsFailedIfWillExceedMaxAttempts(job, err)
 		}
-		cancelFunc()
 	}()
 
 	select {
+	case <-done:
+		// 任务已完成（成功、失败或panic），正常退出
+		return
 	case <-ctx.Done():
-		// timeout to exit worker goroutine, but job may continue executed
+		// 任务超时，但任务可能仍在执行中
+		m.logger.Warn(
+			"queue.job.timeout",
+			"queue", job.GetName(),
+			"worker_id", IFaceToString(workerID),
+			"payload", IFaceToString(job.Payload()),
+			"timeout", IFaceToString(int64(job.Timeout().Seconds())),
+		)
 		m.markJobAsFailedIfWillExceedMaxAttempts(job, ctx.Err())
 		return
 	}
 }
 
 // looperJitter looper循环器间隔抖动
-func (m *manager) looperJitter() time.Duration {
-	m.jitter = m.jitter + time.Duration(rand.Intn(int(jitterBase/3)))
-	if m.jitter > 1*time.Second {
-		m.jitter = jitterBase
+//
+//	-- name task名或general
+func (m *manager) looperJitter(name string) time.Duration {
+	// init
+	if _, ok := m.jitter[name]; !ok {
+		m.jitter[name] = jitterBase
 	}
 
-	return m.jitter
+	m.jitter[name] = m.jitter[name] + time.Duration(rand.Intn(int(jitterBase/3)))
+	if m.jitter[name] > 1*time.Second {
+		m.jitter[name] = jitterBase
+	}
+
+	return m.jitter[name]
 }
 
 // markJobAsFailedIfAlreadyExceedsMaxAttempts job执行`之前`检测尝试次数是否超限
@@ -400,7 +530,7 @@ func (m *manager) failJob(job JobIFace, err error) {
 		textJobFailedLog,
 		"queue", job.GetName(),
 		"payload", IFaceToString(job.Payload()),
-		"error", IFaceToString(err),
+		"error", err.Error(),
 	)
 
 	// -> 3、设置任务执行失败
@@ -445,7 +575,7 @@ func (m *manager) shutDown(ctx context.Context) (err error) {
 	timer := time.NewTimer(nextPollInterval())
 	defer timer.Stop()
 	for {
-		if m.isWorkersDown() {
+		if m.isLooperAndWorkersDown() {
 			return nil
 		}
 		select {
@@ -500,17 +630,219 @@ func (m *manager) setWorkerStatus(workerID int64, isRun bool) {
 	}
 }
 
-// isWorkersDown 检查是否所有worker当前工作任务均处于down状态
-func (m *manager) isWorkersDown() (down bool) {
+// isLooperAndWorkersDown 检查是否所有worker当前工作任务均处于down状态
+func (m *manager) isLooperAndWorkersDown() (down bool) {
+	// 所有worker退出
 	for _, node := range m.workerStatus {
 		if node.isSet() {
 			return false
 		}
 	}
-	return true
+
+	// looper退出
+	return m.isChannelClosed.isSet()
 }
 
 // shuttingDown 检测当前队列是否处于正在关闭中的状态
 func (m *manager) shuttingDown() bool {
 	return m.inShutdown.isSet()
+}
+
+// closeChannel 多looper争抢关闭channel
+func (m *manager) closeChannel() {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	// 已标记，不再执行close
+	if m.isChannelClosed.isSet() {
+		return
+	}
+
+	// 标记已关闭
+	m.isChannelClosed.setTrue()
+	close(m.channel)
+}
+
+// autoScaleWorkers 自动检测并扩缩容worker进程
+func (m *manager) autoScaleWorkers() error {
+	var (
+		memSta = m.getMemoryStatistics()
+		jobSta = m.getJobStatistics()
+	)
+
+	var (
+		shouldIncrease  = false
+		shouldDecrease  = false
+		decreaseNumber  = 0
+		increaseNumber  = 0
+		maxWorkerNumber = int(int64(m.config.MaxConcurrency)*m.realTasksNum) + 1
+		oneWorkerMemory = memSta.GoMemoryTotal / uint64(m.realTasksNum)
+	)
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++
+	// 1. 待执行job数小于启动的Worker数
+	// 2. 启动的Worker数大于真实允许执行的task数（说明扩容过）
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++
+	if int(jobSta.TotalJobs) < len(m.workerStatus) && len(m.workerStatus) > int(m.realTasksNum) {
+		shouldDecrease = true
+		decreaseNumber = len(m.workerStatus) - int(m.realTasksNum)
+	}
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++
+	// 1. 待执行的job数大于等于100倍的worker数
+	// 2. Worker数没超过可允许的最大并发数
+	// 3. 按系统可用内存和go已申请内存与已使用内存计算扩容数
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++
+	if int(jobSta.TotalJobs) > 100*len(m.workerStatus) && len(m.workerStatus) < maxWorkerNumber {
+		shouldIncrease = true
+		// 初步设定扩容一倍Worker 与 最大worker和当前worker差值的较小值
+		increaseNumber = min(int(m.realTasksNum), maxWorkerNumber-len(m.workerStatus))
+		// 按系统可用内存计算最大可扩容worker数，取最小可扩容数
+		increaseNumber = min(int(memSta.SysMemoryAvailable/oneWorkerMemory), increaseNumber)
+	}
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++
+	// 1. 系统可用内存低于当前go已分配的内存时没办法扩容
+	// 2. 系统内存使用率大于0.9
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++
+	if memSta.SysMemoryAvailable < oneWorkerMemory || memSta.SysMemoryUsedPercent >= memoryMaxPercentThreshold {
+		shouldIncrease = false
+	}
+
+	if shouldDecrease {
+		return m.decreaseWorkers(decreaseNumber)
+	}
+
+	if shouldIncrease {
+		return m.increaseWorkers(increaseNumber)
+	}
+
+	return nil
+}
+
+// increaseWorkers 增加worker
+func (m *manager) increaseWorkers(num int) error {
+	if m.shuttingDown() {
+		return ErrQueueClosed
+	}
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	for range num {
+		m.logger.Info("start.worker", "worker_id", IFaceToString(m.nextWorkerID))
+		m.startSingleWorker()
+	}
+
+	return nil
+}
+
+// decreaseWorkers 减少worker
+func (m *manager) decreaseWorkers(num int) error {
+	if m.shuttingDown() {
+		return ErrQueueClosed
+	}
+
+	if len(m.workerChannel) <= num {
+		return fmt.Errorf("exist worker num %d less then stop worker num %d", len(m.workerChannel), num)
+	}
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	for index, stopChan := range m.workerChannel {
+		if index > m.nextWorkerID-int64(num) {
+			close(stopChan)
+			m.logger.Info("stop.worker", "worker_id", IFaceToString(index))
+		}
+	}
+	m.nextWorkerID -= int64(num)
+
+	return nil
+}
+
+// getMemoryStatistics 获取内存统计信息
+func (m *manager) getMemoryStatistics() MemoryStatistics {
+	// 系统内存情况统计
+	var (
+		memTotal       = uint64(1) // 默认1 防止获取不到时下方报除以0的panic
+		memUsed        = uint64(0)
+		memAvailable   = uint64(0)
+		memUsedPercent = float64(0)
+	)
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		m.logger.Warn("get system memory info occur error", "errorMsg", err.Error())
+	} else {
+		memTotal = v.Total
+		memUsed = v.Used
+		memAvailable = v.Available
+		memUsedPercent = v.UsedPercent
+	}
+
+	// go内存情况统计
+	goMem := runtime.MemStats{}
+	runtime.ReadMemStats(&goMem)
+
+	return MemoryStatistics{
+		SysMemoryTotal:       memTotal,
+		SysMemoryUsed:        memUsed,
+		SysMemoryAvailable:   memAvailable,
+		SysMemoryUsedPercent: memUsedPercent,
+		GoMemoryTotal:        goMem.Sys,
+		GoMemoryAlloc:        goMem.Alloc,
+		GoMemoryUsedPercent:  float64(goMem.Sys) / float64(memTotal),
+	}
+}
+
+// getWorkerStatistics 获取worker统计信息
+func (m *manager) getWorkerStatistics() WorkerStatistics {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	// 统计活跃worker数量
+	activeWorkers := int64(0)
+	workerState := make(map[int64]bool)
+	for workerId, status := range m.workerStatus {
+		if status.isSet() {
+			activeWorkers++
+		}
+		workerState[workerId] = status.isSet()
+	}
+
+	return WorkerStatistics{
+		ActiveWorkers: activeWorkers,
+		TotalWorkers:  int64(len(m.workerStatus)),
+		WorkerState:   workerState,
+	}
+}
+
+// getJobStatistics 获取job统计信息
+func (m *manager) getJobStatistics() JobStatistics {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	// 统计允许执行的job待执行情况
+	totalJobs := int64(0)
+	jobsStatistics := make(map[string]int64)
+	for jobName := range m.tasks {
+		if m.allowRun(jobName) {
+			jobsStatistics[jobName] = m.queue.Size(jobName)
+			totalJobs += jobsStatistics[jobName]
+		}
+	}
+
+	return JobStatistics{
+		TotalJobs:      totalJobs,
+		JobsStatistics: jobsStatistics,
+	}
+}
+
+// getStatistics 获取统计信息
+func (m *manager) getStatistics() Statistics {
+	return Statistics{
+		MemoryStatistics: m.getMemoryStatistics(),
+		WorkerStatistics: m.getWorkerStatistics(),
+		JobStatistics:    m.getJobStatistics(),
+	}
 }
