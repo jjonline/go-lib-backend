@@ -27,10 +27,10 @@ type Queue struct {
 
 // New 初始化一个队列
 //
-//	@param driver     队列实现底层驱动，可选值见上方14行附近位置的常量
-//	@param conn       driver对应底层驱动连接器句柄，具体类型参考 QueueIFace 实体类
-//	@param logger     实现 Logger 接口的结构体实例的指针对象
-//	@param config     单个队列最大并发消费数
+//		@param driver     队列实现底层驱动，可选值见上方14行附近位置的常量
+//		@param conn       driver对应底层驱动连接器句柄，具体类型参考 QueueIFace 实体类
+//		@param logger     实现 Logger 接口的结构体实例的指针对象
+//	    @param config     配置
 func New(driver string, conn interface{}, logger Logger, config Config) *Queue {
 	var queue QueueIFace
 
@@ -42,7 +42,7 @@ func New(driver string, conn interface{}, logger Logger, config Config) *Queue {
 		// queue = &redisQueue{connection: conn.(*redis.Client)}
 		queue = &redisQueue{luaScripts: &luaScripts{}}
 	case MySQL:
-		queue = &mysqlQueue{}
+		queue = &mysqlQueue{tablePrefix: config.TablePrefix}
 	default:
 		panic("do not implement queue instance: " + driver)
 	}
@@ -56,6 +56,12 @@ func New(driver string, conn interface{}, logger Logger, config Config) *Queue {
 	// set config Default
 	if config.MaxConcurrency <= 0 {
 		config.MaxConcurrency = DefaultMaxConcurrency
+	}
+	if config.AutoScaleJobThreshold <= 0 {
+		config.AutoScaleJobThreshold = DefaultAutoScaleJobThreshold
+	}
+	if config.AutoScaleInterval <= 0 {
+		config.AutoScaleInterval = DefaultAutoScaleInterval
 	}
 
 	return &Queue{
@@ -221,7 +227,9 @@ func (q *Queue) GetStatistics() Statistics {
 	return q.manager.getStatistics()
 }
 
-// AutoScaleWorkers 自动扩缩容Worker，内部自动依据待消费job和内存情况决定是扩容还是缩容
+// AutoScaleWorkers 自动扩缩容消费进程的Worker
+// 内部自动依据待消费job和内存情况决定是扩容还是缩容
+// 注意：只有当前进程是消费者进程（即调用了Start方法的）才能扩容
 func (q *Queue) AutoScaleWorkers() error {
 	return q.manager.autoScaleWorkers()
 }

@@ -1,11 +1,11 @@
 package queue
 
+import "github.com/redis/go-redis/v9"
+
 /*
  * @Time   : 2021/1/19 下午20:00
  * @Email  : jjonline@jjonline.cn
  */
-
-import "github.com/redis/go-redis/v9"
 
 // luaScripts redis lua
 type luaScripts struct{}

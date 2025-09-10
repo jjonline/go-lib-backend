@@ -16,11 +16,13 @@ import (
 
 // 定义常量
 const (
-	shutdownPollIntervalMax   = 500 * time.Millisecond // 优雅关闭进程最大重复尝试间隔时长
-	DefaultMaxExecuteDuration = 900 * time.Second      // job任务执行时长极限预警值：15分钟
-	DefaultMaxTries           = 1                      // 默认最大重试次数：1次<即不重试>
-	DefaultRetryInterval      = 60                     // 默认下次任务重试间隔：1分钟<即可多次执行任务失败后下一次尝试是在60秒后>
-	DefaultMaxConcurrency     = 3                      // 默认单个task最大并发数
+	shutdownPollIntervalMax      = 500 * time.Millisecond // 优雅关闭进程最大重复尝试间隔时长
+	DefaultMaxExecuteDuration    = 900 * time.Second      // job任务执行时长极限预警值：15分钟
+	DefaultMaxTries              = 2                      // 默认最大重试次数：2次<发版出现异常时兜底>
+	DefaultRetryInterval         = 60                     // 默认下次任务重试间隔：1分钟<即可多次执行任务失败后下一次尝试是在60秒后>
+	DefaultMaxConcurrency        = 3                      // 默认单个task最大并发数
+	DefaultAutoScaleInterval     = 5 * time.Minute        // 默认自动扩缩容监测时长间隔
+	DefaultAutoScaleJobThreshold = 1000                   // 默认自动扩容job堆积数阈值
 )
 
 var (
@@ -45,8 +47,22 @@ var (
 
 // Config 队列配置
 type Config struct {
-	MaxConcurrency uint8  // 单个task的最大并发处理数量，默认为3
-	TablePrefix    string // 当使用MySQL驱动时表的前缀，默认为空
+	// MaxConcurrency 单个task的最大并发处理数量，默认为3
+	// 最大worker数 = 可运行的task数 * MaxConcurrency + 1
+	MaxConcurrency uint8
+	// TablePrefix 当使用MySQL驱动时数据表的前缀，默认为空
+	TablePrefix string
+	// AutoScale 是否开启自动扩缩容，默认不开启
+	AutoScale bool
+	// AutoScaleInterval 开启自动扩缩容时，自动监测是否需扩容数间隔时间间隔
+	// 默认 5 * time.Minute
+	AutoScaleInterval time.Duration
+	// AutoScaleJobThreshold 开启自动扩缩容时
+	// 当个task累计堆积job数大于等于该值时触发扩容，默认值：1000
+	// 自动扩缩容主要在于扩容worker，指标是job堆积数量（等待执行的job数据）
+	// 而自动缩容则是当堆积job小于等于可运行的task数时自动降低worker数至
+	// 扩容worker最大值为：最大worker数，参照 MaxConcurrency 的说明
+	AutoScaleJobThreshold int64
 }
 
 // endregion
@@ -214,9 +230,9 @@ type TaskIFace interface {
 	MaxTries() int64                                 // 定义队列任务最大尝试次数：任务执行的最大尝试次数
 	RetryInterval() int64                            // 定义队列任务最大尝试间隔：当任务执行失败后再次尝试执行的间隔时长，单位：秒
 	Timeout() time.Duration                          // 定义队列超时方法：返回超时时长
-	RateAllow() bool                                 // 定义队列限流方法：1秒内会多次尝试去执行，返回true则执行返回false则不执行留待下一轮
 	Name() string                                    // 定义队列名称方法：返回队列名称
 	Execute(ctx context.Context, job *RawBody) error // 定义队列任务执行时的方法：执行成功返回nil，执行失败返回error
+	Remark() string                                  // 队列任务說明
 }
 
 // DefaultTaskSetting 默认task设置struct：实现默认的最大尝试次数、尝试间隔时长、最大执行时长
@@ -227,7 +243,7 @@ func (task *DefaultTaskSetting) MaxTries() int64 {
 	return DefaultMaxTries
 }
 
-// RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认60秒后重试
+// RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
 func (task *DefaultTaskSetting) RetryInterval() int64 {
 	return DefaultRetryInterval
 }
@@ -235,11 +251,6 @@ func (task *DefaultTaskSetting) RetryInterval() int64 {
 // Timeout 任务最大执行超时时长：默认超时时长为900秒
 func (task *DefaultTaskSetting) Timeout() time.Duration {
 	return DefaultMaxExecuteDuration
-}
-
-// RateAllow 任务限流方法，默认不限流
-func (task *DefaultTaskSetting) RateAllow() bool {
-	return true
 }
 
 // DefaultTaskSettingWithoutTimeout 默认task设置struct：实现默认的最大尝试次数、尝试间隔时长、最大执行时长
@@ -253,11 +264,6 @@ func (task *DefaultTaskSettingWithoutTimeout) MaxTries() int64 {
 // RetryInterval 当任务执行失败后再次尝试执行的间隔时长，默认立即重试，即间隔时长为0秒
 func (task *DefaultTaskSettingWithoutTimeout) RetryInterval() int64 {
 	return DefaultRetryInterval
-}
-
-// RateAllow 任务限流方法，默认不限流
-func (task *DefaultTaskSettingWithoutTimeout) RateAllow() bool {
-	return true
 }
 
 // jobProperty 公共的job实现类内部属性
@@ -305,6 +311,7 @@ type JobStatistics struct {
 
 // Statistics 统计信息
 type Statistics struct {
+	StatisticsTime   int64            `json:"statistics_time"`   // 统计时间戳
 	MemoryStatistics MemoryStatistics `json:"memory_statistics"` // 内存情况统计
 	WorkerStatistics WorkerStatistics `json:"worker_statistics"` // worker情况统计
 	JobStatistics    JobStatistics    `json:"job_statistics"`    // job情况统计

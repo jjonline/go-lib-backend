@@ -8,9 +8,10 @@ package queue
 import (
 	"context"
 	"errors"
-	"github.com/redis/go-redis/v9"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

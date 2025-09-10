@@ -7,10 +7,23 @@ package queue
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+// MakeRawBody 构造RawBody结构方法
+//   - queue    队列标识符、名称
+//   - uniqueId 唯一id
+//   - payload  队列载体，字节数组
+func MakeRawBody(queue, uniqueId string, payload []byte) *RawBody {
+	return &RawBody{
+		queue:   queue,
+		payload: payload,
+		ID:      uniqueId,
+	}
+}
 
 // FakeUniqueID 生成一个V4版本的uuid字符串，生成失败返回时间戳纳秒
 // UUID单机足以保障唯一，生成失败场景下纳秒时间戳也可以一定程度上保障单机唯一

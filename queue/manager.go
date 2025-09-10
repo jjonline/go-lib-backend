@@ -136,6 +136,9 @@ func (m *manager) start() (err error) {
 	}
 	m.lock.Unlock()
 
+	// ④ 启动自动扩缩容检测器
+	go m.startAutoScaleMonitor()
+
 	return err
 }
 
@@ -203,7 +206,6 @@ func (m *manager) dedicatedLooper(name string) {
 		select {
 		case <-m.getDoneChan():
 			m.logger.Info("shutdown, queue dedicated looper exited", "task_looper", name)
-			m.closeChannel() // close job chan
 			return
 		default:
 			// chan关闭则退出
@@ -227,6 +229,21 @@ func (m *manager) dedicatedLooper(name string) {
 				time.Sleep(m.looperJitter(name))
 			}
 		}
+	}
+}
+
+// startAutoScaleMonitor 启动自动扩缩容监测器
+func (m *manager) startAutoScaleMonitor() {
+	if !m.config.AutoScale {
+		return
+	}
+
+	ticker := time.NewTicker(m.config.AutoScaleInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		m.logger.Debug("start.autoScale.monitor")
+		_ = m.autoScaleWorkers()
 	}
 }
 
@@ -448,6 +465,9 @@ func (m *manager) runJob(job JobIFace, workerID int64) {
 //
 //	-- name task名或general
 func (m *manager) looperJitter(name string) time.Duration {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	// init
 	if _, ok := m.jitter[name]; !ok {
 		m.jitter[name] = jitterBase
@@ -663,8 +683,17 @@ func (m *manager) closeChannel() {
 	close(m.channel)
 }
 
+// isConsumerProcess 判断当前进程实例是否为消费者进程
+func (m *manager) isConsumerProcess() bool {
+	return m.realTasksNum > 0
+}
+
 // autoScaleWorkers 自动检测并扩缩容worker进程
 func (m *manager) autoScaleWorkers() error {
+	if !m.isConsumerProcess() {
+		return fmt.Errorf("queue manager has no workers, maybe this instance is not a consumer process")
+	}
+
 	var (
 		memSta = m.getMemoryStatistics()
 		jobSta = m.getJobStatistics()
@@ -676,6 +705,7 @@ func (m *manager) autoScaleWorkers() error {
 		decreaseNumber  = 0
 		increaseNumber  = 0
 		maxWorkerNumber = int(int64(m.config.MaxConcurrency)*m.realTasksNum) + 1
+		minWorkerNumber = int(m.realTasksNum) + 1
 		oneWorkerMemory = memSta.GoMemoryTotal / uint64(m.realTasksNum)
 	)
 
@@ -683,9 +713,9 @@ func (m *manager) autoScaleWorkers() error {
 	// 1. 待执行job数小于启动的Worker数
 	// 2. 启动的Worker数大于真实允许执行的task数（说明扩容过）
 	// ++++++++++++++++++++++++++++++++++++++++++++++++++
-	if int(jobSta.TotalJobs) < len(m.workerStatus) && len(m.workerStatus) > int(m.realTasksNum) {
+	if int(jobSta.TotalJobs) < len(m.workerStatus) && len(m.workerStatus) > minWorkerNumber {
 		shouldDecrease = true
-		decreaseNumber = len(m.workerStatus) - int(m.realTasksNum)
+		decreaseNumber = len(m.workerStatus) - minWorkerNumber
 	}
 
 	// ++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -693,7 +723,7 @@ func (m *manager) autoScaleWorkers() error {
 	// 2. Worker数没超过可允许的最大并发数
 	// 3. 按系统可用内存和go已申请内存与已使用内存计算扩容数
 	// ++++++++++++++++++++++++++++++++++++++++++++++++++
-	if int(jobSta.TotalJobs) > 100*len(m.workerStatus) && len(m.workerStatus) < maxWorkerNumber {
+	if jobSta.TotalJobs >= m.config.AutoScaleJobThreshold && len(m.workerStatus) < maxWorkerNumber {
 		shouldIncrease = true
 		// 初步设定扩容一倍Worker 与 最大worker和当前worker差值的较小值
 		increaseNumber = min(int(m.realTasksNum), maxWorkerNumber-len(m.workerStatus))
@@ -706,6 +736,7 @@ func (m *manager) autoScaleWorkers() error {
 	// 2. 系统内存使用率大于0.9
 	// ++++++++++++++++++++++++++++++++++++++++++++++++++
 	if memSta.SysMemoryAvailable < oneWorkerMemory || memSta.SysMemoryUsedPercent >= memoryMaxPercentThreshold {
+		m.logger.Warn("autoScaleWorkers.stop", "reason", "memory usage is too big")
 		shouldIncrease = false
 	}
 
@@ -840,7 +871,12 @@ func (m *manager) getJobStatistics() JobStatistics {
 
 // getStatistics 获取统计信息
 func (m *manager) getStatistics() Statistics {
+	if !m.isConsumerProcess() {
+		m.logger.Warn("queue manager has no workers, maybe this instance is not a consumer process")
+	}
+
 	return Statistics{
+		StatisticsTime:   time.Now().Unix(),
 		MemoryStatistics: m.getMemoryStatistics(),
 		WorkerStatistics: m.getWorkerStatistics(),
 		JobStatistics:    m.getJobStatistics(),

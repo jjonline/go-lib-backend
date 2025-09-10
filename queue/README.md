@@ -4,11 +4,26 @@
 
 Queue队列为`生产 -> 消费`模型的简单实现，即：`producer -> consumer(worker)`，一般分为生产端和消费端。
 
-当前已实现开发测试用`memory`驱动和可用于生产的`redis`类型驱动。
+当前已实现以下三种驱动：
+- 开发测试用`memory`驱动
+- 可用于生产的`redis`类型驱动  
+- 可用于生产的`mysql`类型驱动
 
 **⚠️ `memory`类型驱动仅可用于开发调试**
 
 > **由于多个独立进程间内存隔离，以及进程退出后进程所属内存销毁的原因，`memory`方案在进程退出后未消费的队列数据会丢失，故而仅能用于开发调试环境，且生产端和消费端只能在同一进程。**
+
+## 驱动特性对比
+
+| 特性    | Memory | Redis | MySQL |
+|-------|--------|-------|-------|
+| 持久化   | ❌      | ✅     | ✅     |
+| 分布式   | ❌      | ✅     | ✅     |
+| 延迟队列  | ✅      | ✅     | ✅     |
+| 事务支持  | ❌      | ✅     | ✅     |
+| 性能    | 高      | 高     | 中     |
+| 运维复杂度 | 低      | 中     | 低     |
+| 适用场景  | 开发测试   | 高并发生产 | 一般生产  |
 
 ## 二、使用示例
 
@@ -50,8 +65,8 @@ func (t TestTask) Execute(ctx context.Context, job *queue.RawBody) error {
 // 初始化队列Queue对象，生产者、消费者均通过该对象操作
 // 重要：生产者、消费者均需要实例化
 service := queue.New(
-    queue.Redis, // 队列底层驱动器类型，详见包内常量
-    redisClient, // 队列底层驱动client实例
+    queue.Redis, // 队列底层驱动器类型，支持：queue.Memory, queue.Redis, queue.MySQL
+    redisClient, // 队列底层驱动client实例，Redis用*redis.Client，MySQL用*sql.DB
     logger, // 实现 queue.Logger 接口的日志实例，用于记录日志
     5, // 单个队列最大并发消费协程数
 )
@@ -114,8 +129,8 @@ logger.Info("queue worker quit, daemon exited")
 // 初始化队列Queue对象，生产者、消费者均通过该对象操作
 // 生产者&&消费者处于同一进程则可共用，不同进程则需要各自独立实例化
 service := queue.New(
-    queue.Redis, // 队列底层驱动器类型，详见包内常量
-    redisClient, // 队列底层驱动client实例
+    queue.Redis, // 队列底层驱动器类型，支持：queue.Memory, queue.Redis, queue.MySQL
+    redisClient, // 队列底层驱动client实例，Redis用*redis.Client，MySQL用*sql.DB
     logger, // 实现 queue.Logger 接口的日志实例，用于记录日志
 )
 

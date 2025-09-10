@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/jjonline/go-lib-backend/logger v0.0.0-20220613140507-5de65279835c
 	github.com/jjonline/go-lib-backend/queue v0.0.0-20210720014741-ee748420702a
-	github.com/redis/go-redis/v9 v9.10.0
+	github.com/redis/go-redis/v9 v9.13.0
 )
 
 require (
